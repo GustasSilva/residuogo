@@ -198,6 +198,8 @@ cd backend
 
 Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, sem precisar do servidor no ar.
 
+`docs/MAPA_DE_DESENVOLVIMENTO.md` registra as decisões de arquitetura com o motivo de cada uma, os problemas e defeitos encontrados no caminho (com sintoma, causa e correção) e como cada entrega foi verificada. É o complemento do trabalho escrito: o README descreve o sistema pronto, o mapa descreve como se chegou nele.
+
 ## Situação do desenvolvimento
 
 | Fase | Entrega | Situação |
