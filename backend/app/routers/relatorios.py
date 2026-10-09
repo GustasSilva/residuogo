@@ -127,6 +127,7 @@ def manifestos_em_csv(
     participante_id: Annotated[
         int | None, Query(description="Organização participante, em qualquer papel.")
     ] = None,
+    numero: Annotated[str | None, Query(description="Busca por parte do número.")] = None,
 ) -> Response:
     """Exporta a listagem com os mesmos filtros da rota `GET /manifestos`.
 
@@ -141,7 +142,12 @@ def manifestos_em_csv(
     # A consulta da listagem ja traz itens, tipos de residuo e participantes
     # carregados, que e exatamente o que cada linha do CSV precisa.
     consulta = servico_manifestos.montar_consulta(
-        usuario, status=status, inicio=inicio, fim=fim, participante_id=participante_id
+        usuario,
+        status=status,
+        inicio=inicio,
+        fim=fim,
+        participante_id=participante_id,
+        numero=numero,
     )
     encontrados = sessao.scalars(consulta).unique().all()
 

@@ -347,6 +347,26 @@ class TestCsv:
 
         assert len(linhas) == 2
 
+    def test_filtra_por_numero(
+        self, cliente: TestClient, dados: dict, cenario: dict
+    ) -> None:
+        """A busca por número vale na exportação como vale na listagem.
+
+        Sem isso, o usuário filtraria um manifesto na tela e exportaria todos:
+        o arquivo não corresponderia ao que ele estava vendo.
+        """
+        emitido = emitir(cliente, dados)
+
+        conteudo = cliente.get(
+            CSV,
+            headers=autenticar(cliente, "admin@teste.com.br"),
+            params={"numero": emitido["numero"]},
+        ).content
+        linhas = conteudo.decode("utf-8-sig").strip().splitlines()
+
+        assert len(linhas) == 2
+        assert linhas[1].startswith(emitido["numero"])
+
 
 class TestPdf:
     def texto_do_pdf(self, conteudo: bytes) -> str:

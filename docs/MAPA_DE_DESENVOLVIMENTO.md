@@ -20,10 +20,16 @@ depuração e não apenas como anedota.
 | F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08, seed com 40 manifestos | `8362570` | concluída |
 | F3 | Integrações IBGE e ViaCEP, cache em memória, tratamento de indisponibilidade | `6f99b98` | concluída |
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | `54d0881` | concluída |
-| F5 | Front-end (React + Vite) | — | a fazer |
+| F5 | Front-end em React: login, painel, manifestos, emissão, detalhe com ações por papel, QR, relatórios e cadastros | (este commit) | concluída |
 | F6 | Acabamento: README final, diagramas e prints em `docs/` | — | a fazer |
 
-Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes.
+Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes; F5, 184 testes.
+
+Os testes automatizados são todos do backend. O front-end foi verificado ao
+vivo, contra o servidor no ar, percorrendo o ciclo inteiro do manifesto pela
+interface (ver seção 5) — escrever uma suíte de testes de componente exigiria
+uma segunda ferramenta de teste e um segundo conjunto de dublês para a API,
+sem acrescentar garantia sobre as regras, que estão todas do outro lado.
 
 **O SOAP foi construído na F1, e não na F3 como previa o escopo original.** Era
 o ponto de maior risco técnico do projeto — a tecnologia menos usada hoje, com
@@ -285,6 +291,65 @@ chamada não estaria simulada e o teste falharia. A resposta 200 é a prova.
 | `qr_token` como UUID separado do id | quem recebe o QR code não precisa descobrir quantos manifestos existem no sistema |
 | Identificadores do domínio em português sem acento | `manifesto`, `gerador`, `transportador` são o vocabulário do negócio; sem acento porque identificador acentuado é fonte de erro de codificação. Mensagens e textos para o usuário usam acento normalmente |
 | `X-Request-Id` em toda resposta | quando um usuário relata um erro, esse código é o que permite achar a requisição exata no log |
+| Data em `AAAA-MM-DD` montada campo a campo no front-end | `new Date("2026-10-09")` é lido pelo JavaScript como meia-noite em UTC, que no Brasil cai às 21h do dia anterior: a tela mostraria 08/10. O erro é silencioso e só aparece perto da virada do dia |
+| Token da sessão no `localStorage` | sobrevive a um F5, que é o mínimo aceitável em uso real. A alternativa mais segura seria um cookie `HttpOnly`, inacessível ao JavaScript, mas ela exige o servidor emitindo e invalidando o cookie — troca assumida e registrada no código |
+
+---
+
+### 2.15 O front-end não repete regra de negócio
+
+**Contexto.** A tela precisa decidir o que mostrar: quais botões de ação, quais
+organizações oferecer na emissão, quem pode abrir a seção de cadastros.
+
+**Decisão.** Toda decisão dessas é **de interface**, tomada a partir do que o
+servidor já informou, e nunca uma segunda implementação da regra.
+
+Os dois casos que mais importam:
+
+* **Quais ações aparecem** depende do status do manifesto e de a organização do
+  usuário ser a indicada naquele papel — as mesmas duas condições que a regra
+  RN01 aplica no servidor. A tela compara o **id** da organização, e não apenas
+  o papel, para manter o paralelo exato.
+* **Quais participantes a emissão oferece** vem da rota de organizações com o
+  filtro `apenas_aptas`, que no servidor reaproveita as condições da RN04. A
+  tela não sabe o que é "apta"; ela pergunta.
+
+**Consequência.** Esconder um botão é conveniência, não autorização: a mesma
+requisição enviada por fora continua sendo recusada. E a lista de participantes
+nunca oferece alguém que a API recusaria em seguida — na demonstração, a
+transportadora com licença vencida simplesmente não aparece.
+
+### 2.16 Os filtros ficam no endereço da página
+
+**Decisão.** A listagem de manifestos guarda status, período, participante e
+número nos parâmetros da URL, não em estado do componente.
+
+**Por quê.** Recarregar a página mantém o filtro, o botão voltar do navegador
+funciona, o filtro pode ser enviado por link — e o painel consegue apontar para
+`/manifestos?status=EMITIDO`, que é exatamente o que os cartões de pendência
+fazem.
+
+**Detalhe.** O formulário de filtros não guarda estado: os campos nascem com o
+valor que está no endereço e, ao enviar, o endereço é reescrito. Com isso não
+existe a possibilidade de o formulário e a listagem discordarem.
+
+### 2.17 Dois hooks no lugar de uma biblioteca de dados
+
+**Contexto.** Sete telas fazem a mesma coisa: consultar, mostrar "carregando",
+e então mostrar o dado ou o erro. Outras tantas executam ações que escrevem.
+
+**Decisão.** Dois hooks próprios — `useCarregamento` e `useAcao` — em vez de uma
+biblioteca de busca de dados.
+
+**Por quê.** As duas somam cerca de 120 linhas, inteiramente legíveis, e o
+projeto precisa poder explicar cada peça. Uma biblioteca traria cache,
+revalidação e invalidação que este sistema não usa.
+
+**O problema que o hook resolve, e que a repetição esconderia.** A resposta que
+chega **depois** de o filtro ter mudado. Em vez de um estado "carregando" ligado
+e desligado à mão, o resultado guarda a qual consulta ele pertence; se a chave
+gravada não é a atual, a tela está carregando. Assim não existe instante em que
+o resultado de um filtro apareça como se fosse de outro.
 
 ---
 
@@ -464,6 +529,58 @@ antes da anterior. Se a conferência falhar, a carga é abortada.
 inventado só apareceu quando uma função nova o confrontou (a primeira foram os
 CEP, problema 3.10). A conferência automática é a resposta a esse padrão.
 
+### 3.14 Os hooks em português não eram reconhecidos como hooks
+
+**Sintoma.** O verificador de código do front-end recusou os dois hooks novos
+com oito erros: *"React Hook `useState` is called in function `usarCarregamento`
+that is neither a React function component nor a custom React Hook function"*.
+
+**Causa.** O nome. Todo o código do projeto está em português, e os hooks foram
+batizados `usarCarregamento` e `usarAcao`. Só que o prefixo `use` não é
+convenção de estilo: é como o React e as suas ferramentas **identificam** um
+hook. Sem ele, o verificador não tem como conferir se as regras dos hooks estão
+sendo respeitadas — e, pior, deixa de conferir em silêncio.
+
+**Correção.** `useCarregamento`, `useAcao`, `useSessao`, `usePapel`: prefixo em
+inglês, porque faz parte do contrato da biblioteca; o resto do nome em
+português, como no restante do projeto. O motivo ficou escrito no topo dos
+arquivos, já que é o tipo de inconsistência aparente que um leitor questionaria.
+
+### 3.15 A exportação em CSV ignorava o filtro de número
+
+**Sintoma.** Encontrado ao escrever a tela de listagem: a rota `GET /manifestos`
+aceita cinco filtros, e a rota de exportação aceitava quatro. O `numero` não
+estava entre eles.
+
+**Causa.** A rota do CSV foi escrita na F4 reaproveitando a consulta da
+listagem, mas declarando os parâmetros um a um — e esse ficou de fora. O FastAPI
+ignora parâmetro que a rota não declara, então o pedido não dava erro: o
+arquivo simplesmente vinha com tudo.
+
+**Consequência real.** O usuário filtraria um manifesto na tela e exportaria a
+listagem inteira, sem nenhum aviso de que o arquivo não corresponde ao que ele
+está vendo.
+
+**Correção.** O parâmetro foi acrescentado à rota, e com ele um teste que
+exporta filtrando por número e confere que volta uma linha só. A promessa da
+documentação da rota — "os mesmos filtros da listagem" — passou a ser verdade
+verificada, e não apenas escrita.
+
+### 3.16 O navegador pode bloquear a abertura do PDF
+
+**Sintoma.** Potencial, identificado na verificação ao vivo: o PDF do manifesto
+abre em nova aba, e abrir aba por código é tratado pelo navegador como pop-up.
+
+**Causa.** As rotas de PDF e CSV exigem autenticação, e o navegador não envia o
+cabeçalho `Authorization` ao seguir um link comum — por isso o arquivo é
+buscado por requisição e aberto a partir da memória. Só que, entre o clique e a
+abertura, há a geração do documento no servidor; passado o tempo que o
+navegador considera "resposta a um gesto do usuário", a abertura é barrada.
+
+**Correção.** A abertura passou a usar `window.open`, que devolve nulo quando é
+bloqueada. Nesse caso o arquivo é **baixado** — um download nunca é bloqueado, e
+o usuário fica com o documento de qualquer forma.
+
 ---
 
 ## 4. Pontos que o escopo deixou abertos, e como foram fechados
@@ -505,6 +622,10 @@ atende ao que se espera dele; a verificação confronta o sistema com o mundo.
 | Relatórios da F4 | os três agrupamentos do resumo somam exatamente o mesmo total, conferido contra o servidor no ar; os PDFs são lidos de volta nos testes e o conteúdo é verificado |
 | Cache das integrações | medido ao vivo: 2,19 s na primeira consulta de municípios, 0,003 s na segunda |
 | Indisponibilidade das APIs externas | simulada nos testes: tempo limite, erro 500 seguido de sucesso, 4xx sem nova tentativa, formato de resposta alterado e queda total |
+| Front-end, ciclo completo | percorrido na interface com os três papéis: o transportador confirmou a coleta, o destinador registrou um recebimento com 15 t para 18,953 t declaradas — e o item voltou marcado como divergente pela RN05 — e informou a destinação; o gerador emitiu um manifesto novo, que apareceu com a ação de cancelamento |
+| Front-end, visibilidade e papéis | o administrador não recebe formulário de ação nenhum, e a tela explica por quê (RN01); o transportador vê apenas os manifestos da sua organização; "Emitir manifesto" e "Cadastros" só aparecem para quem pode usá-los |
+| Front-end, integrações | o CEP 74085-100 preencheu "Rua 110", "Setor Sul" e selecionou Goiânia na lista de 246 municípios do IBGE; um CEP de São Paulo foi recusado com aviso, sem sujar o formulário |
+| Front-end, QR code | o endereço `/qr/<token>` da etiqueta abriu o manifesto correspondente |
 
 Números que o seed produz, medidos no painel: **78,2% de desvio de aterro** na
 janela de seis meses (205.280 kg recuperados de 262.518 kg destinados) e **14 de
@@ -516,9 +637,8 @@ mesmo período.
 
 ## 6. O que falta
 
-**No código.** F4 (PDF do manifesto com QR code, relatórios em PDF e CSV,
-dashboard de indicadores), F5 (front-end) e F6 (acabamento e insumos em
-`docs/`).
+**No código.** F6: acabamento, diagramas e prints em `docs/`, e a marcação dos
+trechos de código que vão para o relatório impresso.
 
 **No trabalho escrito, fora do código.** A proposta de uma a duas páginas para
 o coordenador auxiliar; a divisão do trabalho entre os três alunos; o capítulo

@@ -27,10 +27,19 @@ py -3.13 -m venv .venv
 .venv/Scripts/python.exe -m uvicorn app.main:app --reload
 ```
 
+Em outro terminal, o front-end:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 Depois de subir:
 
 | Endereço | O que é |
 |---|---|
+| http://localhost:5173 | a aplicação web |
 | http://127.0.0.1:8000/docs | Swagger: documentação interativa do REST |
 | http://127.0.0.1:8000/soap/manifesto?wsdl | contrato WSDL do serviço SOAP |
 | http://127.0.0.1:8000/health | diagnóstico da aplicação, do banco e do cache das APIs externas |
@@ -130,6 +139,29 @@ Um CEP inexistente é 404, não 503: o ViaCEP respondeu corretamente, e a respos
 
 Os CEPs e os códigos de município do seed são reais e conferidos nas duas APIs: consultar o CEP de qualquer organização cadastrada devolve exatamente o endereço que está no registro.
 
+## Front-end
+
+React com Vite e TypeScript, em `frontend/`. Consome a mesma API REST documentada no Swagger — nada no sistema é exclusivo da tela.
+
+| Tela | O que faz |
+|---|---|
+| Login | autentica e guarda o token; traz os acessos de demonstração para a apresentação |
+| Painel | indicadores do mês, desvio de aterro, série dos seis meses, pendências e licenças a vencer |
+| Manifestos | listagem com filtros no endereço da página, paginação e exportação em CSV |
+| Emitir manifesto | só para o gerador; participantes e resíduos vêm dos catálogos da API |
+| Detalhe | documento na tela, QR code, histórico e as ações permitidas ao usuário |
+| `/qr/:token` | destino da etiqueta impressa: resolve o token e abre o manifesto |
+| Relatórios | resumo do período por tipo, classe e destinação, com PDF |
+| Cadastros | organizações, usuários e tipos de resíduo (apenas ADMIN) |
+
+Sem biblioteca de componentes, de estado ou de gráficos: são sete telas, e cada peça — o cliente HTTP, os dois hooks de carregamento e de ação, os gráficos em CSS — cabe em poucas dezenas de linhas que podem ser lidas e explicadas inteiras. A folha de estilo é única e usa o mesmo verde dos PDFs gerados pelo backend.
+
+Três pontos da interface vale destacar, porque são decisões e não detalhes:
+
+- **Quais botões aparecem** depende do status do manifesto e da organização do usuário — as mesmas duas condições da regra RN01. Esconder um botão é conveniência; quem recusa a operação é o servidor.
+- **Os filtros ficam na URL.** Recarregar a página mantém o filtro, o botão voltar funciona, e o painel consegue apontar para `/manifestos?status=EMITIDO`.
+- **PDF e CSV não são links.** As rotas exigem o cabeçalho `Authorization`, que o navegador não envia ao seguir um link comum; os arquivos são buscados como qualquer requisição e entregues a partir da memória.
+
 ## Testes
 
 ```bash
@@ -137,7 +169,7 @@ cd backend
 .venv/Scripts/python.exe -m pytest
 ```
 
-183 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
+184 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
 
 Nenhum teste acessa a internet: o `respx` intercepta as chamadas às APIs externas e devolve a resposta que o teste determinar — é assim que dá para provocar de propósito um tempo limite, um erro 500 e a indisponibilidade total do IBGE.
 
@@ -166,7 +198,18 @@ residuogo/
 │   └── tests/
 ├── clients/soap_client.py   # consumidor do serviço SOAP (zeep)
 ├── docs/                    # openapi.json e WSDL exportados
-└── frontend/                # (fase 5)
+└── frontend/
+    └── src/
+        ├── App.tsx          # rotas
+        ├── estilos.css      # folha de estilo única
+        ├── formatos.ts      # número, data, CNPJ e CEP em formato brasileiro
+        ├── rotulos.ts       # como cada enumeração é escrita na tela
+        ├── sessao.ts        # contrato da sessão e hooks de leitura
+        ├── useCarregamento.ts  # consulta à API, com cancelamento
+        ├── useAcao.ts       # ações que escrevem, com erro e botão travado
+        ├── api/             # cliente HTTP, rotas e tipos do contrato
+        ├── componentes/     # moldura, campos, etiquetas e gráficos
+        └── telas/           # uma por tela do sistema
 ```
 
 As regras de negócio ficam em `services/`, nunca nos routers: é o que permite que REST e SOAP compartilhem exatamente o mesmo comportamento, diferindo apenas no formato da mensagem.
@@ -208,7 +251,7 @@ Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, s
 | F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08 | concluída |
 | F3 | IBGE e ViaCEP com cache em memória e queda tratada | concluída |
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | concluída |
-| F5 | Front-end | a fazer |
+| F5 | Front-end em React: login, painel, manifestos, relatórios e cadastros | concluída |
 | F6 | README final, diagramas e prints em `docs/` | a fazer |
 
 O serviço SOAP e o cliente `zeep` já estão funcionando desde a F1, por serem o ponto de maior risco técnico do projeto.

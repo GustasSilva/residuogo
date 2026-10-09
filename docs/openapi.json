@@ -1482,6 +1482,24 @@
               "title": "Participante Id"
             },
             "description": "Organização participante, em qualquer papel."
+          },
+          {
+            "name": "numero",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca por parte do número.",
+              "title": "Numero"
+            },
+            "description": "Busca por parte do número."
           }
         ],
         "responses": {
