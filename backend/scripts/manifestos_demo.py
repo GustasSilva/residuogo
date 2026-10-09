@@ -19,6 +19,7 @@ números mostrados na apresentação não mudam entre uma execução e outra.
 """
 
 import random
+import sys
 from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -145,6 +146,22 @@ def _conferir_itens(sorteio: random.Random, itens: list[ItemManifesto]) -> None:
         item.divergente = ha_divergencia(item.quantidade_declarada, item.quantidade_recebida)
 
 
+# Quantos dias, no minimo, um manifesto em andamento precisa ter de emitido
+# para que as suas etapas seguintes nao caiam no futuro. A coleta acontece 1 a
+# 2 dias depois da emissao e o recebimento, mais algumas horas: sem esta folga,
+# um manifesto emitido ontem apareceria "recebido" amanha.
+# Dias que o fluxo inteiro (emissao, coleta, recebimento e destinacao) pode
+# levar no pior sorteio: 2 ate a coleta, mais 2 ate o recebimento, mais 4 ate a
+# destinacao.
+FOLGA_DO_FLUXO_COMPLETO = 8
+
+IDADE_MINIMA_EM_DIAS = {
+    StatusManifesto.EMITIDO: 0,
+    StatusManifesto.EM_TRANSPORTE: 3,
+    StatusManifesto.RECEBIDO: 5,
+}
+
+
 def criar(sessao: Session) -> int:
     """Cria os manifestos de demonstração. Devolve quantos foram criados.
 
@@ -196,10 +213,19 @@ def criar(sessao: Session) -> int:
             StatusManifesto.RECEBIDO,
         }
         if em_andamento:
-            dia_emissao = agora - timedelta(days=sorteio.randint(0, 6))
+            # A emissao precisa ser antiga o suficiente para que as etapas
+            # seguintes caibam no passado (ver IDADE_MINIMA_EM_DIAS).
+            minimo = IDADE_MINIMA_EM_DIAS[status]
+            dia_emissao = agora - timedelta(days=sorteio.randint(minimo, minimo + 6))
         else:
             avanco = (indice / len(status_sorteados)) * (agora - primeiro_dia).days
-            dia_emissao = primeiro_dia + timedelta(days=avanco + sorteio.randint(0, 4))
+            dia_emissao = min(
+                primeiro_dia + timedelta(days=avanco + sorteio.randint(0, 4)),
+                # O fluxo completo leva ate uma semana da emissao a destinacao;
+                # sem este limite, o ultimo manifesto da sequencia seria
+                # emitido hoje e destinado nos proximos dias.
+                agora - timedelta(days=FOLGA_DO_FLUXO_COMPLETO),
+            )
 
         emitido_em = _horario_comercial(sorteio, dia_emissao)
 
@@ -338,4 +364,43 @@ def criar(sessao: Session) -> int:
         )
     sessao.commit()
 
+    _conferir_o_que_foi_gerado(sessao, agora)
+
     return len(status_sorteados)
+
+
+def _conferir_o_que_foi_gerado(sessao: Session, agora: datetime) -> None:
+    """Confere a coerencia das datas geradas antes de dar o script por pronto.
+
+    Dado de demonstracao errado passa despercebido - foi o que aconteceu com
+    etapas datadas no futuro, descobertas somente quando a exportacao em CSV
+    as mostrou. A conferencia e automatica justamente porque o erro e
+    silencioso: nada no sistema recusa um manifesto recebido amanha.
+    """
+    problemas = []
+
+    for manifesto in sessao.scalars(select(Manifesto)):
+        etapas = [
+            ("emissão", manifesto.emitido_em),
+            ("coleta", manifesto.coletado_em),
+            ("recebimento", manifesto.recebido_em),
+            ("destinação", manifesto.destinado_em),
+        ]
+        cumpridas = [(nome, momento) for nome, momento in etapas if momento is not None]
+
+        for nome, momento in cumpridas:
+            if momento > agora:
+                problemas.append(f"{manifesto.numero}: {nome} datada no futuro ({momento})")
+
+        for (nome_anterior, anterior), (nome, momento) in zip(cumpridas, cumpridas[1:]):
+            if momento < anterior:
+                problemas.append(
+                    f"{manifesto.numero}: {nome} antes da {nome_anterior}"
+                )
+
+    if problemas:
+        for problema in problemas:
+            print(problema, file=sys.stderr)
+        raise SystemExit(
+            "Os dados de demonstração saíram incoerentes; corrija a geração antes de usá-los."
+        )

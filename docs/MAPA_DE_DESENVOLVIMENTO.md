@@ -441,6 +441,29 @@ próprio.
 **Correção.** O prefixo é removido ao montar a lista `erros[]`. As mensagens já
 estão escritas em português e vão direto para a tela.
 
+### 3.13 Etapas de manifesto datadas no futuro
+
+**Sintoma.** A exportação em CSV da F4 mostrou manifestos com coleta e
+recebimento em datas posteriores a hoje — fatos que supostamente já
+aconteceram, agendados para amanhã.
+
+**Causa.** O script de dados de demonstração sorteava a data de emissão e
+somava os intervalos de cada etapa (1 a 2 dias até a coleta, algumas horas até
+o recebimento, 1 a 4 dias até a destinação). Quando a emissão sorteada caía
+nos últimos dias, a soma passava do presente. Nada no sistema recusa isso: a
+máquina de estados valida a ordem das transições, não a data em que elas são
+registradas.
+
+**Correção.** Duas folgas no sorteio: cada status em andamento exige uma idade
+mínima da emissão, e a emissão dos manifestos concluídos é limitada a oito dias
+atrás — o tempo máximo que o fluxo inteiro leva. E, para que o erro não volte,
+o script passou a conferir o que gerou: nenhuma etapa no futuro, nenhuma etapa
+antes da anterior. Se a conferência falhar, a carga é abortada.
+
+**Por que importa além do dado.** É a segunda vez que um dado de demonstração
+inventado só apareceu quando uma função nova o confrontou (a primeira foram os
+CEP, problema 3.10). A conferência automática é a resposta a esse padrão.
+
 ---
 
 ## 4. Pontos que o escopo deixou abertos, e como foram fechados
@@ -478,13 +501,16 @@ atende ao que se espera dele; a verificação confronta o sistema com o mundo.
 | Códigos IBGE dos municípios do seed | conferidos na API do IBGE, um por um, em vez de confiados à memória |
 | CEP do seed | conferidos no ViaCEP pela própria rota do sistema, comparando campo a campo com o registro gravado |
 | Fluxo completo do manifesto | execução de ponta a ponta contra o servidor no ar, com os três usuários, incluindo as recusas esperadas (transição inválida, estado final, falta de permissão) |
-| Coerência dos 40 manifestos do seed | script dedicado: nenhum sem número, nenhum destinado sem tipo de destinação, nenhuma data fora de ordem, contagem de movimentações certa em todos |
+| Coerência dos 40 manifestos do seed | o próprio script confere o que gerou, ao fim da carga: nenhuma etapa no futuro e nenhuma fora de ordem (ver problema 3.13) |
+| Relatórios da F4 | os três agrupamentos do resumo somam exatamente o mesmo total, conferido contra o servidor no ar; os PDFs são lidos de volta nos testes e o conteúdo é verificado |
 | Cache das integrações | medido ao vivo: 2,19 s na primeira consulta de municípios, 0,003 s na segunda |
 | Indisponibilidade das APIs externas | simulada nos testes: tempo limite, erro 500 seguido de sucesso, 4xx sem nova tentativa, formato de resposta alterado e queda total |
 
-Dados gerados pelo seed, usados como referência dos relatórios: **63,9% de
-desvio de aterro** e **16 de 57 itens** com divergência entre o declarado e o
-recebido.
+Números que o seed produz, medidos no painel: **78,2% de desvio de aterro** na
+janela de seis meses (205.280 kg recuperados de 262.518 kg destinados) e **14 de
+47 itens** com divergência entre o declarado e o recebido. O indicador é
+calculado sobre massa; o volume aparece em coluna própria, com 113,084 m³ no
+mesmo período.
 
 ---
 
