@@ -33,7 +33,7 @@ Depois de subir:
 |---|---|
 | http://127.0.0.1:8000/docs | Swagger: documentação interativa do REST |
 | http://127.0.0.1:8000/soap/manifesto?wsdl | contrato WSDL do serviço SOAP |
-| http://127.0.0.1:8000/health | diagnóstico da aplicação e do banco |
+| http://127.0.0.1:8000/health | diagnóstico da aplicação, do banco e do cache das APIs externas |
 
 O seed cria 6 organizações, 11 tipos de resíduo e 40 manifestos distribuídos pelos últimos seis meses, em todos os status e com algumas divergências de quantidade — para que a listagem e os relatórios tenham dados realistas. O sorteio usa semente fixa: os números não mudam entre execuções.
 
@@ -99,6 +99,37 @@ backend/.venv/Scripts/python.exe clients/soap_client.py RGO-2026-000001 11222333
 
 O cliente usa `zeep`: ele lê o WSDL e monta a chamada sozinho, sem nenhum XML escrito no código. Informar um número inexistente ou um CNPJ que não participa do manifesto demonstra o tratamento de erro por SOAP Fault.
 
+## Integrações externas
+
+| Rota | O que devolve |
+|---|---|
+| `GET /api/v1/localidades/municipios-go` | os 246 municípios de Goiás, da API de Localidades do IBGE |
+| `GET /api/v1/localidades/cep/{cep}` | o endereço de um CEP, do ViaCEP, já com os nomes de campo do cadastro |
+
+As duas servem ao cadastro de organizações: a lista do IBGE preenche o campo de município — e dela vem o código oficial de 7 dígitos, que é o que o sistema guarda — e o CEP preenche logradouro, bairro e município de uma vez.
+
+Chamar um serviço de terceiro é o ponto em que uma API deixa de controlar a própria disponibilidade. A política, escrita uma vez em `integrations/externo.py` e aplicada igual às duas integrações:
+
+1. toda chamada tem tempo limite (5 s);
+2. falha de rede e erro 5xx são tentados mais uma vez; um 4xx não, porque a resposta seria a mesma;
+3. a resposta boa fica em cache na memória — 30 dias para os municípios, 7 dias para cada CEP;
+4. se a API cair, serve-se o último cache guardado, mesmo vencido;
+5. só quando não há nada em cache o problema do terceiro chega ao usuário, como `503 SERVICO_EXTERNO_INDISPONIVEL`.
+
+Toda resposta diz de onde veio o dado, no cabeçalho `X-Fonte`:
+
+| `X-Fonte` | Significado |
+|---|---|
+| `api` | consultado agora na API externa |
+| `cache` | cache dentro da validade; a API externa não foi chamada |
+| `cache-expirado` | a API está fora do ar, e este é o último dado que havia |
+
+Para ver o cache em ação, basta consultar os municípios duas vezes e comparar o `X-Fonte`. Com a lista já em cache, a rota continua respondendo mesmo com a máquina sem internet.
+
+Um CEP inexistente é 404, não 503: o ViaCEP respondeu corretamente, e a resposta correta foi "não existe". Ele sinaliza isso de um jeito particular — HTTP 200 com `{"erro": "true"}` no corpo —, tratado em `integrations/viacep.py`.
+
+Os CEPs e os códigos de município do seed são reais e conferidos nas duas APIs: consultar o CEP de qualquer organização cadastrada devolve exatamente o endereço que está no registro.
+
 ## Testes
 
 ```bash
@@ -106,7 +137,9 @@ cd backend
 .venv/Scripts/python.exe -m pytest
 ```
 
-140 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro e o serviço SOAP (consulta, faults e defesa contra XXE).
+155 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
+
+Nenhum teste acessa a internet: o `respx` intercepta as chamadas às APIs externas e devolve a resposta que o teste determinar — é assim que dá para provocar de propósito um tempo limite, um erro 500 e a indisponibilidade total do IBGE.
 
 ## Estrutura
 
@@ -125,6 +158,7 @@ residuogo/
 │   │   ├── validacoes.py    # CNPJ e CEP
 │   │   ├── dependencies.py  # sessão, autenticação e paginação
 │   │   ├── paginacao.py     # montagem das listagens paginadas
+│   │   ├── integrations/    # IBGE, ViaCEP, cache e política de falha
 │   │   ├── routers/         # rotas REST
 │   │   ├── services/        # regras de negócio
 │   │   └── soap/            # envelope, WSDL e rota do serviço SOAP
@@ -170,7 +204,7 @@ Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, s
 |---|---|---|
 | F1 | Base: models, autenticação JWT, erros RFC 7807, cadastros, `/health`, SOAP | concluída |
 | F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08 | concluída |
-| F3 | IBGE e ViaCEP com cache | a fazer |
+| F3 | IBGE e ViaCEP com cache em memória e queda tratada | concluída |
 | F4 | PDF com QR code, CSV, dashboard | a fazer |
 | F5 | Front-end | a fazer |
 | F6 | README final, diagramas e prints em `docs/` | a fazer |

@@ -1157,6 +1157,116 @@
         }
       }
     },
+    "/api/v1/localidades/municipios-go": {
+      "get": {
+        "tags": [
+          "Localidades"
+        ],
+        "summary": "Municípios de Goiás (IBGE)",
+        "description": "Lista os 246 municípios de Goiás, em ordem alfabética.\n\nAlimenta o campo de município do cadastro de organizações. A lista vem da\nAPI de Localidades do IBGE e fica em cache por 30 dias, porque muda apenas\nquando uma lei cria ou extingue um município.",
+        "operationId": "municipios_api_v1_localidades_municipios_go_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "headers": {
+              "X-Fonte": {
+                "description": "De onde veio o dado devolvido.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "api",
+                    "cache",
+                    "cache-expirado"
+                  ]
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MunicipioSaida"
+                  },
+                  "type": "array",
+                  "title": "Response Municipios Api V1 Localidades Municipios Go Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/localidades/cep/{cep}": {
+      "get": {
+        "tags": [
+          "Localidades"
+        ],
+        "summary": "Endereço de um CEP (ViaCEP)",
+        "description": "Busca o endereço de um CEP para preencher o formulário de cadastro.\n\nDevolve 404 quando o CEP não existe na base dos Correios — situação\ndiferente de o ViaCEP estar fora do ar, que resulta em 503 (ou no último\nendereço consultado, se houver cache).",
+        "operationId": "endereco_do_cep_api_v1_localidades_cep__cep__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "CEP com ou sem máscara.",
+              "examples": [
+                "74130010"
+              ],
+              "title": "Cep"
+            },
+            "description": "CEP com ou sem máscara."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnderecoCepSaida"
+                }
+              }
+            },
+            "headers": {
+              "X-Fonte": {
+                "description": "De onde veio o dado devolvido.",
+                "schema": {
+                  "type": "string",
+                  "enum": [
+                    "api",
+                    "cache",
+                    "cache-expirado"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/soap/manifesto": {
       "get": {
         "tags": [
@@ -1214,7 +1324,7 @@
           "Diagnóstico"
         ],
         "summary": "Verifica se a aplicação está saudável",
-        "description": "Confere se a aplicacao consegue falar com o banco.\n\nRota publica e deliberadamente simples: executa a consulta mais barata\npossivel (`SELECT 1`) apenas para provar que a conexao esta de pe. Nao\ndevolve detalhe tecnico da falha, que iria para o log do servidor.",
+        "description": "Confere se a aplicacao consegue falar com o banco.\n\nRota publica e deliberadamente simples: executa a consulta mais barata\npossivel (`SELECT 1`) apenas para provar que a conexao esta de pe. Nao\ndevolve detalhe tecnico da falha, que iria para o log do servidor.\n\nSobre as APIs externas, a rota informa apenas **quantas respostas estao em\ncache**, sem chamar o IBGE nem o ViaCEP. Consultar um terceiro aqui faria\no diagnostico da nossa aplicacao depender da disponibilidade dele - e um\nbalanceador de carga tiraria o sistema do ar por causa de uma queda que\nnao e nossa e que o cache ja cobre.",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -1335,6 +1445,47 @@
         ],
         "title": "DestinacaoEntrada",
         "description": "Destinacao final. O tipo de tratamento e obrigatorio (regra RN06)."
+      },
+      "EnderecoCepSaida": {
+        "properties": {
+          "cep": {
+            "type": "string",
+            "title": "Cep",
+            "description": "Somente digitos, como o sistema guarda."
+          },
+          "logradouro": {
+            "type": "string",
+            "title": "Logradouro"
+          },
+          "bairro": {
+            "type": "string",
+            "title": "Bairro"
+          },
+          "municipio_nome": {
+            "type": "string",
+            "title": "Municipio Nome"
+          },
+          "municipio_ibge_codigo": {
+            "type": "string",
+            "title": "Municipio Ibge Codigo"
+          },
+          "uf": {
+            "type": "string",
+            "title": "Uf",
+            "description": "Sigla do estado, com 2 letras."
+          }
+        },
+        "type": "object",
+        "required": [
+          "cep",
+          "logradouro",
+          "bairro",
+          "municipio_nome",
+          "municipio_ibge_codigo",
+          "uf"
+        ],
+        "title": "EnderecoCepSaida",
+        "description": "Endereco devolvido pela consulta de CEP.\n\nOs nomes dos campos sao iguais aos de `OrganizacaoCriar` de proposito: a\ntela de cadastro recebe esta resposta e preenche o formulario campo a\ncampo, sem traducao no meio.\n\n`logradouro` e `bairro` podem vir vazios: CEP de zona rural e CEP geral de\nmunicipio pequeno identificam a cidade, nao a rua."
       },
       "HTTPValidationError": {
         "properties": {
@@ -1786,6 +1937,26 @@
         ],
         "title": "MovimentacaoSaida",
         "description": "Um passo da linha do tempo do manifesto."
+      },
+      "MunicipioSaida": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "description": "Codigo IBGE do municipio, com 7 digitos."
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "MunicipioSaida",
+        "description": "Municipio como a tela de cadastro o consome."
       },
       "OrganizacaoCriar": {
         "properties": {

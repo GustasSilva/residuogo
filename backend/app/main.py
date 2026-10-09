@@ -26,7 +26,16 @@ from app.config import config
 from app.database import criar_tabelas
 from app.dependencies import Sessao
 from app.errors import registrar_handlers
-from app.routers import auth, manifestos, organizacoes, tipos_residuo, usuarios
+from app.integrations import externo, ibge, viacep
+from app.integrations.externo import CABECALHO_FONTE
+from app.routers import (
+    auth,
+    localidades,
+    manifestos,
+    organizacoes,
+    tipos_residuo,
+    usuarios,
+)
 from app.soap import router as soap
 
 # Formato de log com o horario e o nivel, para que a saida do servidor possa
@@ -65,6 +74,8 @@ async def ciclo_de_vida(_: FastAPI):
     criar_tabelas()
     logger.info("Banco pronto em %s", config.database_url)
     yield
+    # No encerramento: fecha o cliente HTTP compartilhado das integracoes.
+    externo.encerrar_cliente()
 
 
 app = FastAPI(
@@ -99,7 +110,9 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["X-Request-Id"],
+    # Cabecalhos que o navegador autoriza o front-end a ler. Sem declarar,
+    # o `fetch` recebe a resposta mas nao enxerga estes dois.
+    expose_headers=["X-Request-Id", CABECALHO_FONTE],
 )
 
 # Liga os tradutores de excecao -> resposta RFC 7807 (ver `errors.py`).
@@ -118,6 +131,7 @@ api.include_router(organizacoes.router)
 api.include_router(usuarios.router)
 api.include_router(tipos_residuo.router)
 api.include_router(manifestos.router)
+api.include_router(localidades.router)
 
 app.include_router(api)
 
@@ -144,6 +158,12 @@ def health(sessao: Sessao) -> dict:
     Rota publica e deliberadamente simples: executa a consulta mais barata
     possivel (`SELECT 1`) apenas para provar que a conexao esta de pe. Nao
     devolve detalhe tecnico da falha, que iria para o log do servidor.
+
+    Sobre as APIs externas, a rota informa apenas **quantas respostas estao em
+    cache**, sem chamar o IBGE nem o ViaCEP. Consultar um terceiro aqui faria
+    o diagnostico da nossa aplicacao depender da disponibilidade dele - e um
+    balanceador de carga tiraria o sistema do ar por causa de uma queda que
+    nao e nossa e que o cache ja cobre.
     """
     try:
         sessao.execute(text("SELECT 1"))
@@ -156,4 +176,8 @@ def health(sessao: Sessao) -> dict:
         "status": "ok" if banco_ok else "degradado",
         "banco": "ok" if banco_ok else "indisponivel",
         "versao": config.app_versao,
+        "cache_externo": {
+            "municipios": ibge.cache.tamanho(),
+            "ceps": viacep.cache.tamanho(),
+        },
     }

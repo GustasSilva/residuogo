@@ -105,3 +105,29 @@ def completar_cnpj(base: str) -> str:
     primeiro = _digito_verificador(digitos, _PESOS_PRIMEIRO_DIGITO)
     segundo = _digito_verificador(digitos + primeiro, _PESOS_SEGUNDO_DIGITO)
     return digitos + primeiro + segundo
+
+
+# Codigo da unidade federativa de Goias na tabela do IBGE. Todo municipio
+# goiano tem codigo de 7 digitos cujos dois primeiros sao 52.
+UF_GOIAS = "52"
+
+
+def normalizar_codigo_ibge(valor: str) -> str:
+    """Confere o codigo IBGE de um municipio e exige que ele seja de Goias.
+
+    O codigo tem 7 digitos, e os dois primeiros identificam o estado. Como o
+    sistema atende organizacoes de Goias e a lista oferecida ao usuario vem da
+    API do IBGE filtrada pela UF 52, conferir o prefixo aqui impede que um
+    municipio de outro estado entre por uma chamada feita direto a API.
+    """
+    digitos = apenas_digitos(valor)
+
+    if len(digitos) != 7:
+        raise ValueError("Código IBGE do município deve ter 7 dígitos.")
+
+    if not digitos.startswith(UF_GOIAS):
+        raise ValueError(
+            "Código IBGE deve ser de um município de Goiás, cujo código começa com 52."
+        )
+
+    return digitos

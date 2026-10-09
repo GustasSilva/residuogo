@@ -30,7 +30,7 @@ from app.enums import (
     TipoDestinacao,
     UnidadeMedida,
 )
-from app.validacoes import normalizar_cep, normalizar_cnpj
+from app.validacoes import normalizar_cep, normalizar_cnpj, normalizar_codigo_ibge
 
 # `from_attributes=True` autoriza o Pydantic a ler os dados de um objeto do
 # SQLAlchemy (por atributo) e nao apenas de um dicionario. E o que permite
@@ -105,6 +105,11 @@ class OrganizacaoBase(BaseModel):
     @classmethod
     def _validar_cep(cls, valor: str) -> str:
         return normalizar_cep(valor)
+
+    @field_validator("municipio_ibge_codigo")
+    @classmethod
+    def _validar_municipio(cls, valor: str) -> str:
+        return normalizar_codigo_ibge(valor)
 
 
 class OrganizacaoCriar(OrganizacaoBase):
@@ -349,3 +354,34 @@ class ManifestoSaida(ManifestoResumo):
     recebido_em: datetime | None
     destinado_em: datetime | None
     itens: list[ItemManifestoSaida]
+
+
+# ---------------------------------------------------------------------------
+# Localidades (IBGE e ViaCEP)
+# ---------------------------------------------------------------------------
+
+
+class MunicipioSaida(BaseModel):
+    """Municipio como a tela de cadastro o consome."""
+
+    codigo: str = Field(description="Codigo IBGE do municipio, com 7 digitos.")
+    nome: str
+
+
+class EnderecoCepSaida(BaseModel):
+    """Endereco devolvido pela consulta de CEP.
+
+    Os nomes dos campos sao iguais aos de `OrganizacaoCriar` de proposito: a
+    tela de cadastro recebe esta resposta e preenche o formulario campo a
+    campo, sem traducao no meio.
+
+    `logradouro` e `bairro` podem vir vazios: CEP de zona rural e CEP geral de
+    municipio pequeno identificam a cidade, nao a rua.
+    """
+
+    cep: str = Field(description="Somente digitos, como o sistema guarda.")
+    logradouro: str
+    bairro: str
+    municipio_nome: str
+    municipio_ibge_codigo: str
+    uf: str = Field(description="Sigla do estado, com 2 letras.")

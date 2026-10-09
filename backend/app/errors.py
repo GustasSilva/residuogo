@@ -262,7 +262,10 @@ def registrar_handlers(app: FastAPI) -> None:
                 # descartamos o primeiro nivel ("body"/"query"), que diz apenas
                 # onde o dado veio, e juntamos o resto no caminho do campo.
                 "campo": ".".join(str(parte) for parte in erro["loc"][1:]) or "(corpo)",
-                "mensagem": erro["msg"],
+                # O Pydantic prefixa com "Value error, " a mensagem de todo
+                # validador nosso. Como essas mensagens ja estao escritas em
+                # portugues e vao direto para a tela, o prefixo sai aqui.
+                "mensagem": erro["msg"].removeprefix("Value error, "),
             }
             for erro in exc.errors()
         ]

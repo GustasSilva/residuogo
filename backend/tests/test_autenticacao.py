@@ -167,4 +167,7 @@ class TestDiagnostico:
             "status": "ok",
             "banco": "ok",
             "versao": resposta.json()["versao"],
+            # O diagnostico informa quantas respostas das APIs externas estao
+            # em cache, sem consultar o IBGE nem o ViaCEP (ver `/health`).
+            "cache_externo": {"municipios": 0, "ceps": 0},
         }
