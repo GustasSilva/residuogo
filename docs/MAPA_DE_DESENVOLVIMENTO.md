@@ -19,7 +19,7 @@ depuração e não apenas como anedota.
 | F1 | Base: modelos, autenticação JWT, erros RFC 7807, cadastros, `/health`, SOAP com WSDL e cliente `zeep` | `65d81b3` | concluída |
 | F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08, seed com 40 manifestos | `8362570` | concluída |
 | F3 | Integrações IBGE e ViaCEP, cache em memória, tratamento de indisponibilidade | `6f99b98` | concluída |
-| F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | (este commit) | concluída |
+| F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | `54d0881` | concluída |
 | F5 | Front-end (React + Vite) | — | a fazer |
 | F6 | Acabamento: README final, diagramas e prints em `docs/` | — | a fazer |
 
