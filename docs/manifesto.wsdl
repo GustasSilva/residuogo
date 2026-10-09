@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             xmlns:rgo="http://residuogo.example/soap/manifesto"
+             targetNamespace="http://residuogo.example/soap/manifesto"
+             name="ManifestoService">
+
+  <!-- ============================================================
+       types: o formato dos dados, em XML Schema.
+       ============================================================ -->
+  <types>
+    <xsd:schema targetNamespace="http://residuogo.example/soap/manifesto" elementFormDefault="qualified">
+
+      <!-- Entrada da operacao. -->
+      <xsd:element name="ConsultarStatusManifesto">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="numero" type="xsd:string"/>
+            <xsd:element name="cnpj_consultante" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Saida da operacao. `tipo_destinacao` e opcional porque so existe
+           depois de o manifesto ser destinado. -->
+      <xsd:element name="ConsultarStatusManifestoResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="numero" type="xsd:string"/>
+            <xsd:element name="status" type="xsd:string"/>
+            <xsd:element name="gerador_razao_social" type="xsd:string"/>
+            <xsd:element name="destinador_razao_social" type="xsd:string"/>
+            <xsd:element name="tipo_destinacao" type="xsd:string" minOccurs="0"/>
+            <xsd:element name="atualizado_em" type="xsd:dateTime"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+      <!-- Conteudo do campo `detail` de um SOAP Fault. -->
+      <xsd:element name="ManifestoFault">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="codigo" type="xsd:string"/>
+            <xsd:element name="mensagem" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+
+    </xsd:schema>
+  </types>
+
+  <!-- ============================================================
+       message: nomeia os documentos que trafegam.
+       ============================================================ -->
+  <message name="ConsultarStatusManifestoEntrada">
+    <part name="parametros" element="rgo:ConsultarStatusManifesto"/>
+  </message>
+  <message name="ConsultarStatusManifestoSaida">
+    <part name="resultado" element="rgo:ConsultarStatusManifestoResponse"/>
+  </message>
+  <message name="ManifestoFalha">
+    <part name="falha" element="rgo:ManifestoFault"/>
+  </message>
+
+  <!-- ============================================================
+       portType: a interface abstrata do servico.
+       ============================================================ -->
+  <portType name="ManifestoPortType">
+    <operation name="ConsultarStatusManifesto">
+      <documentation>
+        Consulta a situacao de um manifesto. Apenas organizacoes participantes
+        do manifesto (gerador, transportador ou destinador) podem consultar.
+      </documentation>
+      <input message="rgo:ConsultarStatusManifestoEntrada"/>
+      <output message="rgo:ConsultarStatusManifestoSaida"/>
+      <fault name="ManifestoFalha" message="rgo:ManifestoFalha"/>
+    </operation>
+  </portType>
+
+  <!-- ============================================================
+       binding: como a interface viaja na rede.
+       ============================================================ -->
+  <binding name="ManifestoBinding" type="rgo:ManifestoPortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="ConsultarStatusManifesto">
+      <soap:operation soapAction="http://residuogo.example/soap/manifesto/ConsultarStatusManifesto"/>
+      <input>
+        <soap:body use="literal"/>
+      </input>
+      <output>
+        <soap:body use="literal"/>
+      </output>
+      <fault name="ManifestoFalha">
+        <soap:fault name="ManifestoFalha" use="literal"/>
+      </fault>
+    </operation>
+  </binding>
+
+  <!-- ============================================================
+       service: onde o servico atende. O endereco e preenchido em
+       tempo de execucao com a URL real desta instalacao.
+       ============================================================ -->
+  <service name="ManifestoService">
+    <documentation>Servico SOAP de consulta de manifestos do ResiduoGO.</documentation>
+    <port name="ManifestoPort" binding="rgo:ManifestoBinding">
+      <soap:address location="http://127.0.0.1:8000/soap/manifesto"/>
+    </port>
+  </service>
+
+</definitions>

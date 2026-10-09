@@ -1,0 +1,1285 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ResíduoGO",
+    "description": "\nSistema de rastreamento de resíduos sólidos para organizações do estado de Goiás.\n\nRegistra o ciclo completo de um lote de resíduo — **gerador → transportador →\ndestinador** — em um manifesto digital, que cada participante atualiza por esta API.\n\nO sistema expõe os dois estilos de web service:\n\n* **REST**, documentado aqui, em `/api/v1`;\n* **SOAP**, com contrato WSDL em `/soap/manifesto?wsdl`.\n\nTodas as respostas de erro seguem a **RFC 7807** (`application/problem+json`).\n",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Autentica o usuário e devolve o token de acesso",
+        "description": "Troca e-mail e senha por um token JWT.\n\nA mesma mensagem de erro e usada para e-mail inexistente e para senha\nerrada. Diferenciar as duas situacoes permitiria descobrir quais e-mails\nestao cadastrados no sistema testando um a um.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Dados do usuário autenticado e da organização dele",
+        "description": "Devolve quem esta logado.\n\nO front-end chama esta rota ao abrir a aplicacao: e dela que sai o papel\nda organizacao, que determina quais acoes aparecem em cada manifesto.",
+        "operationId": "usuario_logado_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioLogadoSaida"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/organizacoes": {
+      "post": {
+        "tags": [
+          "Organizações"
+        ],
+        "summary": "Cadastra uma organização (ADMIN)",
+        "description": "Cadastra um participante do ciclo do resíduo.\n\nO CNPJ é validado pelos dígitos verificadores e gravado somente com\ndígitos; a regra está em `validacoes.py`, aplicada pelo schema de entrada.",
+        "operationId": "criar_api_v1_organizacoes_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizacaoCriar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizacaoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Organizações"
+        ],
+        "summary": "Lista organizações, com filtros",
+        "description": "Lista participantes de forma paginada.\n\nO filtro `apenas_aptas` reutiliza exatamente as mesmas condições que a\nemissão do manifesto aplica (regra RN04), de modo que a tela nunca ofereça\num participante que a API depois recusaria.",
+        "operationId": "listar_api_v1_organizacoes_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "papel",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/PapelOrganizacao"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra pelo papel no ciclo do resíduo.",
+              "title": "Papel"
+            },
+            "description": "Filtra pelo papel no ciclo do resíduo."
+          },
+          {
+            "name": "apenas_aptas",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Quando verdadeiro, devolve apenas organizações ativas e com licença ambiental válida. Exige que `papel` seja informado. É o filtro usado pela tela de novo manifesto.",
+              "default": false,
+              "title": "Apenas Aptas"
+            },
+            "description": "Quando verdadeiro, devolve apenas organizações ativas e com licença ambiental válida. Exige que `papel` seja informado. É o filtro usado pela tela de novo manifesto."
+          },
+          {
+            "name": "busca",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Texto procurado na razão social ou no CNPJ.",
+              "title": "Busca"
+            },
+            "description": "Texto procurado na razão social ou no CNPJ."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Pagina atual, comecando em 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Pagina atual, comecando em 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Registros por pagina.",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Registros por pagina."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_OrganizacaoSaida_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizacoes/{organizacao_id}": {
+      "get": {
+        "tags": [
+          "Organizações"
+        ],
+        "summary": "Detalhe de uma organização",
+        "operationId": "detalhar_api_v1_organizacoes__organizacao_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "organizacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Organizacao Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizacaoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usuarios": {
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Cadastra um usuário (ADMIN)",
+        "operationId": "criar_api_v1_usuarios_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioCriar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Lista usuários (ADMIN)",
+        "operationId": "listar_api_v1_usuarios_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "organizacao_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra os usuários de uma organização.",
+              "title": "Organizacao Id"
+            },
+            "description": "Filtra os usuários de uma organização."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Pagina atual, comecando em 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Pagina atual, comecando em 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Registros por pagina.",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Registros por pagina."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_UsuarioSaida_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tipos-residuo": {
+      "post": {
+        "tags": [
+          "Tipos de resíduo"
+        ],
+        "summary": "Cadastra um tipo de resíduo (ADMIN)",
+        "operationId": "criar_api_v1_tipos_residuo_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoResiduoCriar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoResiduoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Tipos de resíduo"
+        ],
+        "summary": "Lista o catálogo de tipos de resíduo",
+        "operationId": "listar_api_v1_tipos_residuo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Pagina atual, comecando em 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Pagina atual, comecando em 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Registros por pagina.",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Registros por pagina."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_TipoResiduoSaida_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/soap/manifesto": {
+      "get": {
+        "tags": [
+          "Web Service SOAP"
+        ],
+        "summary": "Contrato WSDL do serviço SOAP",
+        "description": "Devolve o WSDL do servico.\n\nO endereco publicado dentro do documento e a propria URL desta\nrequisicao, sem a query string. Assim o WSDL funciona tanto em\n`localhost` quanto em qualquer outro host, sem configuracao.",
+        "operationId": "obter_wsdl_soap_manifesto_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Web Service SOAP"
+        ],
+        "summary": "Executa uma operação SOAP (corpo: envelope XML)",
+        "description": "Recebe um envelope SOAP, executa a operacao e devolve a resposta.\n\nA sequencia de verificacoes vai do envelope para o conteudo: primeiro se a\nmensagem e XML valido, depois se a operacao existe, depois se os\nparametros vieram, e so no fim a regra de negocio. Cada falha produz um\nSOAP Fault com codigo proprio, o que permite ao cliente distinguir\n\"mensagem mal formada\" de \"manifesto inexistente\".",
+        "operationId": "atender_soap_manifesto_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Diagnóstico"
+        ],
+        "summary": "Identificação da aplicação",
+        "description": "Aponta para a documentacao dos dois servicos.",
+        "operationId": "raiz__get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Raiz  Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Diagnóstico"
+        ],
+        "summary": "Verifica se a aplicação está saudável",
+        "description": "Confere se a aplicacao consegue falar com o banco.\n\nRota publica e deliberadamente simples: executa a consulta mais barata\npossivel (`SELECT 1`) apenas para provar que a conexao esta de pe. Nao\ndevolve detalhe tecnico da falha, que iria para o log do servidor.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ClasseResiduo": {
+        "type": "string",
+        "enum": [
+          "I",
+          "IIA",
+          "IIB"
+        ],
+        "title": "ClasseResiduo",
+        "description": "Classificacao de residuos solidos conforme a NBR 10004.\n\nI = perigoso; IIA = nao inerte; IIB = inerte."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LoginEntrada": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "senha": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Senha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "senha"
+        ],
+        "title": "LoginEntrada"
+      },
+      "OrganizacaoCriar": {
+        "properties": {
+          "razao_social": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Razao Social"
+          },
+          "papel": {
+            "$ref": "#/components/schemas/PapelOrganizacao",
+            "description": "Posicao no ciclo do residuo."
+          },
+          "cep": {
+            "type": "string",
+            "title": "Cep",
+            "description": "Com ou sem mascara; e guardado so com digitos."
+          },
+          "logradouro": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Logradouro"
+          },
+          "numero": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Numero"
+          },
+          "bairro": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Bairro"
+          },
+          "municipio_ibge_codigo": {
+            "type": "string",
+            "maxLength": 7,
+            "minLength": 7,
+            "title": "Municipio Ibge Codigo",
+            "description": "Codigo IBGE do municipio (7 digitos)."
+          },
+          "municipio_nome": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Municipio Nome"
+          },
+          "licenca_numero": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Licenca Numero"
+          },
+          "licenca_validade": {
+            "type": "string",
+            "format": "date",
+            "title": "Licenca Validade",
+            "description": "Data de vencimento da licenca ambiental."
+          },
+          "cnpj": {
+            "type": "string",
+            "title": "Cnpj",
+            "description": "Com ou sem mascara; os digitos verificadores sao conferidos."
+          }
+        },
+        "type": "object",
+        "required": [
+          "razao_social",
+          "papel",
+          "cep",
+          "logradouro",
+          "numero",
+          "bairro",
+          "municipio_ibge_codigo",
+          "municipio_nome",
+          "licenca_numero",
+          "licenca_validade",
+          "cnpj"
+        ],
+        "title": "OrganizacaoCriar"
+      },
+      "OrganizacaoResumo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "razao_social": {
+            "type": "string",
+            "title": "Razao Social"
+          },
+          "cnpj": {
+            "type": "string",
+            "title": "Cnpj"
+          },
+          "papel": {
+            "$ref": "#/components/schemas/PapelOrganizacao"
+          },
+          "municipio_nome": {
+            "type": "string",
+            "title": "Municipio Nome"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "razao_social",
+          "cnpj",
+          "papel",
+          "municipio_nome"
+        ],
+        "title": "OrganizacaoResumo",
+        "description": "Organizacao como ela aparece dentro de um manifesto."
+      },
+      "OrganizacaoSaida": {
+        "properties": {
+          "razao_social": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Razao Social"
+          },
+          "papel": {
+            "$ref": "#/components/schemas/PapelOrganizacao",
+            "description": "Posicao no ciclo do residuo."
+          },
+          "cep": {
+            "type": "string",
+            "title": "Cep",
+            "description": "Com ou sem mascara; e guardado so com digitos."
+          },
+          "logradouro": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Logradouro"
+          },
+          "numero": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Numero"
+          },
+          "bairro": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Bairro"
+          },
+          "municipio_ibge_codigo": {
+            "type": "string",
+            "maxLength": 7,
+            "minLength": 7,
+            "title": "Municipio Ibge Codigo",
+            "description": "Codigo IBGE do municipio (7 digitos)."
+          },
+          "municipio_nome": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Municipio Nome"
+          },
+          "licenca_numero": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Licenca Numero"
+          },
+          "licenca_validade": {
+            "type": "string",
+            "format": "date",
+            "title": "Licenca Validade",
+            "description": "Data de vencimento da licenca ambiental."
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "cnpj": {
+            "type": "string",
+            "title": "Cnpj"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo"
+          },
+          "criado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Criado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "razao_social",
+          "papel",
+          "cep",
+          "logradouro",
+          "numero",
+          "bairro",
+          "municipio_ibge_codigo",
+          "municipio_nome",
+          "licenca_numero",
+          "licenca_validade",
+          "id",
+          "cnpj",
+          "ativo",
+          "criado_em"
+        ],
+        "title": "OrganizacaoSaida"
+      },
+      "Pagina_OrganizacaoSaida_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizacaoSaida"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de registros que atendem ao filtro."
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina",
+            "description": "Pagina atual, comecando em 1."
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho",
+            "description": "Quantidade de registros por pagina."
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas",
+            "description": "Numero total de paginas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho",
+          "paginas"
+        ],
+        "title": "Pagina[OrganizacaoSaida]"
+      },
+      "Pagina_TipoResiduoSaida_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/TipoResiduoSaida"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de registros que atendem ao filtro."
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina",
+            "description": "Pagina atual, comecando em 1."
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho",
+            "description": "Quantidade de registros por pagina."
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas",
+            "description": "Numero total de paginas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho",
+          "paginas"
+        ],
+        "title": "Pagina[TipoResiduoSaida]"
+      },
+      "Pagina_UsuarioSaida_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/UsuarioSaida"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de registros que atendem ao filtro."
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina",
+            "description": "Pagina atual, comecando em 1."
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho",
+            "description": "Quantidade de registros por pagina."
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas",
+            "description": "Numero total de paginas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho",
+          "paginas"
+        ],
+        "title": "Pagina[UsuarioSaida]"
+      },
+      "PapelOrganizacao": {
+        "type": "string",
+        "enum": [
+          "GERADOR",
+          "TRANSPORTADOR",
+          "DESTINADOR"
+        ],
+        "title": "PapelOrganizacao",
+        "description": "Posicao da organizacao no ciclo do residuo.\n\nO papel da organizacao e o que define quais acoes seus usuarios podem\nexecutar sobre um manifesto (regra RN01)."
+      },
+      "PerfilUsuario": {
+        "type": "string",
+        "enum": [
+          "ADMIN",
+          "USUARIO"
+        ],
+        "title": "PerfilUsuario",
+        "description": "Nivel de acesso do usuario.\n\nADMIN administra cadastros e enxerga todos os manifestos; USUARIO opera\napenas em nome da propria organizacao."
+      },
+      "TipoResiduoCriar": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Codigo",
+            "description": "Codigo da Lista Brasileira de Residuos."
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Descricao"
+          },
+          "classe": {
+            "$ref": "#/components/schemas/ClasseResiduo",
+            "description": "Classificacao da NBR 10004."
+          },
+          "unidade_padrao": {
+            "$ref": "#/components/schemas/UnidadeMedida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descricao",
+          "classe",
+          "unidade_padrao"
+        ],
+        "title": "TipoResiduoCriar"
+      },
+      "TipoResiduoSaida": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Codigo",
+            "description": "Codigo da Lista Brasileira de Residuos."
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Descricao"
+          },
+          "classe": {
+            "$ref": "#/components/schemas/ClasseResiduo",
+            "description": "Classificacao da NBR 10004."
+          },
+          "unidade_padrao": {
+            "$ref": "#/components/schemas/UnidadeMedida"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descricao",
+          "classe",
+          "unidade_padrao",
+          "id"
+        ],
+        "title": "TipoResiduoSaida"
+      },
+      "TokenSaida": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo",
+            "default": "Bearer"
+          },
+          "expira_em_minutos": {
+            "type": "integer",
+            "title": "Expira Em Minutos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "token",
+          "expira_em_minutos"
+        ],
+        "title": "TokenSaida",
+        "description": "Resposta do login.\n\n`tipo` segue o padrao HTTP Bearer: o cliente deve enviar o token no\ncabecalho `Authorization: Bearer <token>`."
+      },
+      "UnidadeMedida": {
+        "type": "string",
+        "enum": [
+          "KG",
+          "T",
+          "L",
+          "M3"
+        ],
+        "title": "UnidadeMedida",
+        "description": "Unidade em que a quantidade do residuo e declarada.\n\nKG e T sao unidades de massa; L e M3, de volume. Os relatorios somam massa\ne volume separadamente, pois converter volume em massa exigiria conhecer a\ndensidade de cada residuo."
+      },
+      "UsuarioCriar": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Nome"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "senha": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Senha",
+            "description": "Minimo de 8 caracteres."
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/PerfilUsuario",
+            "default": "USUARIO"
+          },
+          "organizacao_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizacao Id",
+            "description": "Obrigatorio para USUARIO; deve ficar vazio para ADMIN."
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "email",
+          "senha"
+        ],
+        "title": "UsuarioCriar"
+      },
+      "UsuarioLogadoSaida": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/PerfilUsuario"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo"
+          },
+          "organizacao_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizacao Id"
+          },
+          "organizacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizacaoResumo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "email",
+          "perfil",
+          "ativo",
+          "organizacao_id",
+          "organizacao"
+        ],
+        "title": "UsuarioLogadoSaida",
+        "description": "Resposta de `/auth/me`.\n\nTraz a organizacao completa porque o front-end precisa do papel dela para\ndecidir quais botoes de acao mostrar em cada manifesto."
+      },
+      "UsuarioSaida": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/PerfilUsuario"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo"
+          },
+          "organizacao_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organizacao Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "email",
+          "perfil",
+          "ativo",
+          "organizacao_id"
+        ],
+        "title": "UsuarioSaida",
+        "description": "Usuario devolvido pela API. Nunca inclui a senha nem o hash dela."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "Token devolvido por POST /api/v1/auth/login.",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
