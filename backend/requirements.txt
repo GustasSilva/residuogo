@@ -13,6 +13,11 @@ bcrypt==4.2.1
 # --- SOAP (envelope e WSDL sao montados a mao; lxml faz o parse do XML) ---
 lxml==5.3.0
 
+# --- Fusos horarios ---
+# O Windows nao traz o banco de dados de fusos IANA que o `zoneinfo` usa;
+# este pacote o fornece. Em Linux e macOS ele e inofensivo.
+tzdata==2024.2
+
 # --- Integracoes externas (IBGE e ViaCEP) ---
 httpx==0.28.1
 

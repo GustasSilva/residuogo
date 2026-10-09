@@ -517,6 +517,646 @@
         }
       }
     },
+    "/api/v1/manifestos": {
+      "post": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Emite um manifesto (GERADOR)",
+        "description": "Emite um manifesto em nome da organização do usuário.\n\nO gerador não é informado no corpo: é a organização de quem emite. Os\nparticipantes são validados quanto a papel, situação e licença (RN04).",
+        "operationId": "emitir_api_v1_manifestos_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManifestoCriar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Lista manifestos, com filtros",
+        "description": "Lista os manifestos visíveis ao usuário.\n\nA regra RN07 é aplicada antes dos filtros: um usuário comum vê apenas os\nmanifestos da própria organização, e o ADMIN vê todos.",
+        "operationId": "listar_api_v1_manifestos_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StatusManifesto"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra pelo status.",
+              "title": "Status"
+            },
+            "description": "Filtra pelo status."
+          },
+          {
+            "name": "inicio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Emitidos a partir desta data (inclusive).",
+              "title": "Inicio"
+            },
+            "description": "Emitidos a partir desta data (inclusive)."
+          },
+          {
+            "name": "fim",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Emitidos até esta data (inclusive).",
+              "title": "Fim"
+            },
+            "description": "Emitidos até esta data (inclusive)."
+          },
+          {
+            "name": "participante_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Manifestos em que esta organização participa.",
+              "title": "Participante Id"
+            },
+            "description": "Manifestos em que esta organização participa."
+          },
+          {
+            "name": "numero",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Busca por parte do número.",
+              "title": "Numero"
+            },
+            "description": "Busca por parte do número."
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Pagina atual, comecando em 1.",
+              "default": 1,
+              "title": "Pagina"
+            },
+            "description": "Pagina atual, comecando em 1."
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Registros por pagina.",
+              "default": 20,
+              "title": "Tamanho"
+            },
+            "description": "Registros por pagina."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pagina_ManifestoResumo_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/qr/{token}": {
+      "get": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Resolve o QR code para o manifesto",
+        "description": "Abre o manifesto a partir do token impresso no QR code do documento.",
+        "operationId": "resolver_qr_api_v1_manifestos_qr__token__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}": {
+      "get": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Detalhe do manifesto, com itens",
+        "operationId": "detalhar_api_v1_manifestos__manifesto_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/historico": {
+      "get": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Linha do tempo das movimentações",
+        "description": "Devolve todas as mudanças de status, da emissão ao estado atual.",
+        "operationId": "historico_api_v1_manifestos__manifesto_id__historico_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MovimentacaoSaida"
+                  },
+                  "title": "Response Historico Api V1 Manifestos  Manifesto Id  Historico Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/coleta": {
+      "post": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Confirma a coleta (TRANSPORTADOR)",
+        "description": "EMITIDO → EM_TRANSPORTE, registrando veículo e motorista.",
+        "operationId": "confirmar_coleta_api_v1_manifestos__manifesto_id__coleta_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ColetaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/recebimento": {
+      "post": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Registra o recebimento da carga (DESTINADOR)",
+        "description": "EM_TRANSPORTE → RECEBIDO, conferindo a quantidade de cada item (RN05).",
+        "operationId": "registrar_recebimento_api_v1_manifestos__manifesto_id__recebimento_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecebimentoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/recusa": {
+      "post": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Recusa a carga (DESTINADOR)",
+        "description": "EM_TRANSPORTE → RECUSADO, com motivo obrigatório (RN06).",
+        "operationId": "recusar_api_v1_manifestos__manifesto_id__recusa_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecusaEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/destinacao": {
+      "post": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Informa a destinação final (DESTINADOR)",
+        "description": "RECEBIDO → DESTINADO, com o tipo de tratamento aplicado (RN06).",
+        "operationId": "informar_destinacao_api_v1_manifestos__manifesto_id__destinacao_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DestinacaoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/cancelamento": {
+      "post": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Cancela o manifesto (GERADOR)",
+        "description": "EMITIDO → CANCELADO. Possível apenas antes da coleta.",
+        "operationId": "cancelar_api_v1_manifestos__manifesto_id__cancelamento_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelamentoEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/soap/manifesto": {
       "get": {
         "tags": [
@@ -594,6 +1234,38 @@
   },
   "components": {
     "schemas": {
+      "Acondicionamento": {
+        "type": "string",
+        "enum": [
+          "TAMBOR",
+          "BOMBONA",
+          "CACAMBA",
+          "BIG_BAG",
+          "GRANEL",
+          "OUTRO"
+        ],
+        "title": "Acondicionamento",
+        "description": "Forma como o residuo e embalado para o transporte."
+      },
+      "CancelamentoEntrada": {
+        "properties": {
+          "observacao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacao"
+          }
+        },
+        "type": "object",
+        "title": "CancelamentoEntrada",
+        "description": "Cancelamento pelo gerador, possivel apenas antes da coleta."
+      },
       "ClasseResiduo": {
         "type": "string",
         "enum": [
@@ -603,6 +1275,66 @@
         ],
         "title": "ClasseResiduo",
         "description": "Classificacao de residuos solidos conforme a NBR 10004.\n\nI = perigoso; IIA = nao inerte; IIB = inerte."
+      },
+      "ColetaEntrada": {
+        "properties": {
+          "placa_veiculo": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 7,
+            "title": "Placa Veiculo"
+          },
+          "motorista_nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Motorista Nome"
+          },
+          "observacao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placa_veiculo",
+          "motorista_nome"
+        ],
+        "title": "ColetaEntrada",
+        "description": "Confirmacao de coleta, feita pelo transportador."
+      },
+      "DestinacaoEntrada": {
+        "properties": {
+          "tipo_destinacao": {
+            "$ref": "#/components/schemas/TipoDestinacao"
+          },
+          "observacao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo_destinacao"
+        ],
+        "title": "DestinacaoEntrada",
+        "description": "Destinacao final. O tipo de tratamento e obrigatorio (regra RN06)."
       },
       "HTTPValidationError": {
         "properties": {
@@ -616,6 +1348,103 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ItemManifestoCriar": {
+        "properties": {
+          "tipo_residuo_id": {
+            "type": "integer",
+            "title": "Tipo Residuo Id"
+          },
+          "quantidade_declarada": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Quantidade Declarada",
+            "description": "Precisa ser maior que zero."
+          },
+          "unidade": {
+            "$ref": "#/components/schemas/UnidadeMedida"
+          },
+          "acondicionamento": {
+            "$ref": "#/components/schemas/Acondicionamento"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo_residuo_id",
+          "quantidade_declarada",
+          "unidade",
+          "acondicionamento"
+        ],
+        "title": "ItemManifestoCriar",
+        "description": "Uma linha de residuo informada na emissao.\n\n`gt=0` implementa a parte da regra RN08 que exige quantidade positiva: a\nvalidacao acontece aqui, na entrada, para que o erro volte apontando o\ncampo e o indice do item."
+      },
+      "ItemManifestoSaida": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "tipo_residuo": {
+            "$ref": "#/components/schemas/TipoResiduoSaida"
+          },
+          "quantidade_declarada": {
+            "type": "number",
+            "title": "Quantidade Declarada"
+          },
+          "quantidade_recebida": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantidade Recebida"
+          },
+          "unidade": {
+            "$ref": "#/components/schemas/UnidadeMedida"
+          },
+          "acondicionamento": {
+            "$ref": "#/components/schemas/Acondicionamento"
+          },
+          "divergente": {
+            "type": "boolean",
+            "title": "Divergente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "tipo_residuo",
+          "quantidade_declarada",
+          "quantidade_recebida",
+          "unidade",
+          "acondicionamento",
+          "divergente"
+        ],
+        "title": "ItemManifestoSaida"
+      },
+      "ItemRecebido": {
+        "properties": {
+          "item_id": {
+            "type": "integer",
+            "title": "Item Id"
+          },
+          "quantidade_recebida": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Quantidade Recebida",
+            "description": "Pode ser zero; nao pode ser negativa."
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "quantidade_recebida"
+        ],
+        "title": "ItemRecebido",
+        "description": "Conferencia de um item na chegada ao destino."
       },
       "LoginEntrada": {
         "properties": {
@@ -636,6 +1465,327 @@
           "senha"
         ],
         "title": "LoginEntrada"
+      },
+      "ManifestoCriar": {
+        "properties": {
+          "transportador_id": {
+            "type": "integer",
+            "title": "Transportador Id"
+          },
+          "destinador_id": {
+            "type": "integer",
+            "title": "Destinador Id"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemManifestoCriar"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Itens"
+          },
+          "observacoes": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacoes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transportador_id",
+          "destinador_id",
+          "itens"
+        ],
+        "title": "ManifestoCriar",
+        "description": "Dados da emissao de um manifesto.\n\nO gerador nao e informado: ele e a organizacao do usuario que emite.\n`min_length=1` completa a regra RN08, que exige ao menos um item."
+      },
+      "ManifestoResumo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusManifesto"
+          },
+          "gerador": {
+            "$ref": "#/components/schemas/OrganizacaoResumo"
+          },
+          "transportador": {
+            "$ref": "#/components/schemas/OrganizacaoResumo"
+          },
+          "destinador": {
+            "$ref": "#/components/schemas/OrganizacaoResumo"
+          },
+          "tipo_destinacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TipoDestinacao"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emitido_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Emitido Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "numero",
+          "status",
+          "gerador",
+          "transportador",
+          "destinador",
+          "tipo_destinacao",
+          "emitido_em",
+          "atualizado_em"
+        ],
+        "title": "ManifestoResumo",
+        "description": "Manifesto como aparece na listagem: sem itens, para a resposta ficar leve."
+      },
+      "ManifestoSaida": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero"
+          },
+          "status": {
+            "$ref": "#/components/schemas/StatusManifesto"
+          },
+          "gerador": {
+            "$ref": "#/components/schemas/OrganizacaoResumo"
+          },
+          "transportador": {
+            "$ref": "#/components/schemas/OrganizacaoResumo"
+          },
+          "destinador": {
+            "$ref": "#/components/schemas/OrganizacaoResumo"
+          },
+          "tipo_destinacao": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TipoDestinacao"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emitido_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Emitido Em"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Atualizado Em"
+          },
+          "placa_veiculo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placa Veiculo"
+          },
+          "motorista_nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motorista Nome"
+          },
+          "motivo_recusa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Motivo Recusa"
+          },
+          "observacoes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacoes"
+          },
+          "qr_token": {
+            "type": "string",
+            "title": "Qr Token"
+          },
+          "coletado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coletado Em"
+          },
+          "recebido_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recebido Em"
+          },
+          "destinado_em": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destinado Em"
+          },
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemManifestoSaida"
+            },
+            "type": "array",
+            "title": "Itens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "numero",
+          "status",
+          "gerador",
+          "transportador",
+          "destinador",
+          "tipo_destinacao",
+          "emitido_em",
+          "atualizado_em",
+          "placa_veiculo",
+          "motorista_nome",
+          "motivo_recusa",
+          "observacoes",
+          "qr_token",
+          "coletado_em",
+          "recebido_em",
+          "destinado_em",
+          "itens"
+        ],
+        "title": "ManifestoSaida",
+        "description": "Manifesto completo, com itens e dados de cada etapa."
+      },
+      "MovimentacaoSaida": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "status_anterior": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StatusManifesto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_novo": {
+            "$ref": "#/components/schemas/StatusManifesto"
+          },
+          "data_hora": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Data Hora"
+          },
+          "observacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacao"
+          },
+          "usuario": {
+            "$ref": "#/components/schemas/UsuarioResumo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status_anterior",
+          "status_novo",
+          "data_hora",
+          "observacao",
+          "usuario"
+        ],
+        "title": "MovimentacaoSaida",
+        "description": "Um passo da linha do tempo do manifesto."
       },
       "OrganizacaoCriar": {
         "properties": {
@@ -849,6 +1999,46 @@
         ],
         "title": "OrganizacaoSaida"
       },
+      "Pagina_ManifestoResumo_": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ManifestoResumo"
+            },
+            "type": "array",
+            "title": "Itens"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total",
+            "description": "Total de registros que atendem ao filtro."
+          },
+          "pagina": {
+            "type": "integer",
+            "title": "Pagina",
+            "description": "Pagina atual, comecando em 1."
+          },
+          "tamanho": {
+            "type": "integer",
+            "title": "Tamanho",
+            "description": "Quantidade de registros por pagina."
+          },
+          "paginas": {
+            "type": "integer",
+            "title": "Paginas",
+            "description": "Numero total de paginas."
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens",
+          "total",
+          "pagina",
+          "tamanho",
+          "paginas"
+        ],
+        "title": "Pagina[ManifestoResumo]"
+      },
       "Pagina_OrganizacaoSaida_": {
         "properties": {
           "itens": {
@@ -987,6 +2177,79 @@
         ],
         "title": "PerfilUsuario",
         "description": "Nivel de acesso do usuario.\n\nADMIN administra cadastros e enxerga todos os manifestos; USUARIO opera\napenas em nome da propria organizacao."
+      },
+      "RecebimentoEntrada": {
+        "properties": {
+          "itens": {
+            "items": {
+              "$ref": "#/components/schemas/ItemRecebido"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Itens"
+          },
+          "observacao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observacao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens"
+        ],
+        "title": "RecebimentoEntrada",
+        "description": "Recebimento da carga, feito pelo destinador.\n\nTodos os itens do manifesto precisam ser conferidos (regra RN05); quais\nfaltaram e verificado no servico, que conhece os itens daquele manifesto."
+      },
+      "RecusaEntrada": {
+        "properties": {
+          "motivo_recusa": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Motivo Recusa",
+            "description": "Obrigatório."
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo_recusa"
+        ],
+        "title": "RecusaEntrada",
+        "description": "Recusa da carga. O motivo e obrigatorio (regra RN06)."
+      },
+      "StatusManifesto": {
+        "type": "string",
+        "enum": [
+          "EMITIDO",
+          "EM_TRANSPORTE",
+          "RECEBIDO",
+          "RECUSADO",
+          "DESTINADO",
+          "CANCELADO"
+        ],
+        "title": "StatusManifesto",
+        "description": "Estados possiveis de um manifesto.\n\nA ordem e as transicoes permitidas entre eles estao na maquina de estados\n(`services/manifestos.py`), nao aqui."
+      },
+      "TipoDestinacao": {
+        "type": "string",
+        "enum": [
+          "RECICLAGEM",
+          "COMPOSTAGEM",
+          "COPROCESSAMENTO",
+          "INCINERACAO",
+          "ATERRO",
+          "OUTRO_TRATAMENTO"
+        ],
+        "title": "TipoDestinacao",
+        "description": "Tratamento final aplicado ao residuo.\n\nO agrupamento usado no indicador ambiental esta em `GRUPOS_DESTINACAO`,\nlogo abaixo."
       },
       "TipoResiduoCriar": {
         "properties": {
@@ -1193,6 +2456,29 @@
         ],
         "title": "UsuarioLogadoSaida",
         "description": "Resposta de `/auth/me`.\n\nTraz a organizacao completa porque o front-end precisa do papel dela para\ndecidir quais botoes de acao mostrar em cada manifesto."
+      },
+      "UsuarioResumo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "perfil": {
+            "$ref": "#/components/schemas/PerfilUsuario"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "perfil"
+        ],
+        "title": "UsuarioResumo",
+        "description": "Autor de uma movimentacao, como aparece na linha do tempo."
       },
       "UsuarioSaida": {
         "properties": {

@@ -35,6 +35,8 @@ Depois de subir:
 | http://127.0.0.1:8000/soap/manifesto?wsdl | contrato WSDL do serviço SOAP |
 | http://127.0.0.1:8000/health | diagnóstico da aplicação e do banco |
 
+O seed cria 6 organizações, 11 tipos de resíduo e 40 manifestos distribuídos pelos últimos seis meses, em todos os status e com algumas divergências de quantidade — para que a listagem e os relatórios tenham dados realistas. O sorteio usa semente fixa: os números não mudam entre execuções.
+
 Para recarregar os dados do zero: `python -m scripts.seed --recriar`.
 
 ## Usuários de demonstração
@@ -53,6 +55,40 @@ Dados fictícios, criados pelo seed. Senha de todos os usuários comuns: `residu
 
 A transportadora **Rodolimp está com a licença ambiental vencida de propósito**: é com ela que se demonstra a regra RN04, que recusa a emissão de manifesto para participante sem licença válida.
 
+## Fluxo do manifesto
+
+```mermaid
+stateDiagram-v2
+    [*] --> EMITIDO: gerador emite
+    EMITIDO --> EM_TRANSPORTE: transportador confirma coleta
+    EMITIDO --> CANCELADO: gerador cancela
+    EM_TRANSPORTE --> RECEBIDO: destinador confirma recebimento
+    EM_TRANSPORTE --> RECUSADO: destinador recusa (motivo obrigatório)
+    RECEBIDO --> DESTINADO: destinador informa destinação
+    DESTINADO --> [*]
+    RECUSADO --> [*]
+    CANCELADO --> [*]
+```
+
+Cada transição é um POST para um sub-recurso que nomeia o evento — `/coleta`, `/recebimento`, `/recusa`, `/destinacao`, `/cancelamento` — e não um PUT com o novo status. O cliente descreve o que aconteceu; o servidor decide o status resultante. Assim a máquina de estados não pode ser contornada pela API.
+
+As oito regras do sistema e onde cada uma é aplicada:
+
+| Regra | O que exige | Onde |
+|---|---|---|
+| RN01 | só a organização do papel correto, e vinculada ao manifesto, executa a transição | `_exigir_papel` |
+| RN02 | transição fora do diagrama é recusada com 409 | `_aplicar_transicao` |
+| RN03 | cada transição grava uma movimentação, na mesma transação | `_aplicar_transicao` |
+| RN04 | participantes ativos, com papel certo e licença válida | `emitir` |
+| RN05 | quantidade recebida obrigatória; diferença acima de 5% marca divergência | `registrar_recebimento` |
+| RN06 | recusa exige motivo; destinação exige tipo de tratamento | schemas de entrada |
+| RN07 | o usuário só vê manifestos da própria organização; o ADMIN vê todos | `_exigir_visibilidade` |
+| RN08 | ao menos um item, com quantidade positiva | schema `ManifestoCriar` |
+
+As regras RN06 e RN08 ficam nos schemas de propósito: são exigências sobre o formato da requisição, e validadas ali o erro volta apontando o campo exato, no formato RFC 7807.
+
+Todas as transições passam por uma única função, `_aplicar_transicao`, que é o único ponto do sistema que altera `manifesto.status`. É isso que faz com que RN02 e RN03 valham sempre, sem depender de cada rota se lembrar delas.
+
 ## Cliente SOAP
 
 Com o servidor rodando, em outro terminal:
@@ -70,7 +106,7 @@ cd backend
 .venv/Scripts/python.exe -m pytest
 ```
 
-Cobrem as validações de documento, o hash de senha e os tokens, as permissões por perfil, a regra de licença válida, o formato RFC 7807 de todas as respostas de erro e o serviço SOAP (consulta, faults e defesa contra XXE).
+140 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro e o serviço SOAP (consulta, faults e defesa contra XXE).
 
 ## Estrutura
 
@@ -132,8 +168,8 @@ Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, s
 
 | Fase | Entrega | Situação |
 |---|---|---|
-| F1 | Models, autenticação JWT, erros RFC 7807, cadastros, `/health`, seed | concluída |
-| F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08 | a fazer |
+| F1 | Base: models, autenticação JWT, erros RFC 7807, cadastros, `/health`, SOAP | concluída |
+| F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08 | concluída |
 | F3 | IBGE e ViaCEP com cache | a fazer |
 | F4 | PDF com QR code, CSV, dashboard | a fazer |
 | F5 | Front-end | a fazer |

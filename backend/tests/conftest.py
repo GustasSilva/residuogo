@@ -17,6 +17,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.config import config
 from app.database import Base
 from app.dependencies import obter_sessao
 from app.enums import ClasseResiduo, PapelOrganizacao, PerfilUsuario, UnidadeMedida
@@ -26,6 +27,11 @@ from app.security import gerar_hash_senha
 from app.validacoes import completar_cnpj
 
 SENHA_TESTE = "senhaDeTeste123"
+
+# O bcrypt e lento por projeto, o que e desejavel em producao e inviavel em
+# uma suite com centenas de logins. O custo minimo mantem o comportamento
+# identico e derruba o tempo total de minutos para segundos.
+config.bcrypt_custo = 4
 
 
 @pytest.fixture
@@ -122,6 +128,13 @@ def dados(sessao: Session) -> dict:
         perfil=PerfilUsuario.USUARIO,
         organizacao_id=gerador.id,
     )
+    usuario_transportador = Usuario(
+        nome="Usuario Transportador",
+        email="transportador@teste.com.br",
+        senha_hash=gerar_hash_senha(SENHA_TESTE),
+        perfil=PerfilUsuario.USUARIO,
+        organizacao_id=transportador.id,
+    )
     usuario_destinador = Usuario(
         nome="Usuario Destinador",
         email="destinador@teste.com.br",
@@ -137,7 +150,9 @@ def dados(sessao: Session) -> dict:
         unidade_padrao=UnidadeMedida.T,
     )
 
-    sessao.add_all([admin, usuario_gerador, usuario_destinador, tipo])
+    sessao.add_all(
+        [admin, usuario_gerador, usuario_transportador, usuario_destinador, tipo]
+    )
     sessao.commit()
 
     return {
@@ -147,6 +162,7 @@ def dados(sessao: Session) -> dict:
         "destinador": destinador,
         "admin": admin,
         "usuario_gerador": usuario_gerador,
+        "usuario_transportador": usuario_transportador,
         "usuario_destinador": usuario_destinador,
         "tipo_residuo": tipo,
     }

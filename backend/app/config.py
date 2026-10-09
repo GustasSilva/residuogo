@@ -25,12 +25,21 @@ class Configuracao(BaseSettings):
     jwt_algoritmo: str = "HS256"
     jwt_expiracao_minutos: int = 480  # 8 horas: cobre um dia de uso
 
+    # Custo do bcrypt: cada unidade dobra o tempo de calculo do hash. O padrao
+    # 12 e o recomendado para uso real; a suite de testes o reduz para que
+    # centenas de logins nao levem minutos.
+    bcrypt_custo: int = 12
+
     # Origens liberadas no CORS (porta padrao do Vite no front-end).
     cors_origens: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     # Integracoes externas (IBGE e ViaCEP).
     http_timeout_segundos: float = 5.0
     http_tentativas: int = 2  # 1 chamada original + 1 nova tentativa
+
+    # Fuso usado onde a data local importa: o ano do numero do manifesto e os
+    # periodos dos relatorios. O armazenamento continua sempre em UTC.
+    fuso_local: str = "America/Sao_Paulo"
 
     # Validade do cache em memoria das APIs externas, em segundos.
     cache_municipios_ttl: int = 60 * 60 * 24 * 30  # 30 dias

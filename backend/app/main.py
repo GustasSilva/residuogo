@@ -26,7 +26,7 @@ from app.config import config
 from app.database import criar_tabelas
 from app.dependencies import Sessao
 from app.errors import registrar_handlers
-from app.routers import auth, organizacoes, tipos_residuo, usuarios
+from app.routers import auth, manifestos, organizacoes, tipos_residuo, usuarios
 from app.soap import router as soap
 
 # Formato de log com o horario e o nivel, para que a saida do servidor possa
@@ -117,6 +117,7 @@ api.include_router(auth.router)
 api.include_router(organizacoes.router)
 api.include_router(usuarios.router)
 api.include_router(tipos_residuo.router)
+api.include_router(manifestos.router)
 
 app.include_router(api)
 

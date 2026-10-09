@@ -33,7 +33,8 @@ def gerar_hash_senha(senha: str) -> str:
     senha_bytes = senha.encode("utf-8")
     if len(senha_bytes) > LIMITE_BYTES_SENHA:
         raise ValueError(f"A senha nao pode passar de {LIMITE_BYTES_SENHA} bytes.")
-    return bcrypt.hashpw(senha_bytes, bcrypt.gensalt()).decode("utf-8")
+    sal = bcrypt.gensalt(rounds=config.bcrypt_custo)
+    return bcrypt.hashpw(senha_bytes, sal).decode("utf-8")
 
 
 def senha_confere(senha: str, hash_armazenado: str) -> bool:

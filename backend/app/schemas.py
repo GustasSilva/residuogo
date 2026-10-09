@@ -21,7 +21,15 @@ from typing import Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from app.enums import ClasseResiduo, PapelOrganizacao, PerfilUsuario, UnidadeMedida
+from app.enums import (
+    Acondicionamento,
+    ClasseResiduo,
+    PapelOrganizacao,
+    PerfilUsuario,
+    StatusManifesto,
+    TipoDestinacao,
+    UnidadeMedida,
+)
 from app.validacoes import normalizar_cep, normalizar_cnpj
 
 # `from_attributes=True` autoriza o Pydantic a ler os dados de um objeto do
@@ -199,3 +207,145 @@ class TipoResiduoSaida(TipoResiduoCriar):
     model_config = LEITURA_ORM
 
     id: int
+
+
+# ---------------------------------------------------------------------------
+# Manifesto
+# ---------------------------------------------------------------------------
+
+
+class UsuarioResumo(BaseModel):
+    """Autor de uma movimentacao, como aparece na linha do tempo."""
+
+    model_config = LEITURA_ORM
+
+    id: int
+    nome: str
+    perfil: PerfilUsuario
+
+
+class ItemManifestoCriar(BaseModel):
+    """Uma linha de residuo informada na emissao.
+
+    `gt=0` implementa a parte da regra RN08 que exige quantidade positiva: a
+    validacao acontece aqui, na entrada, para que o erro volte apontando o
+    campo e o indice do item.
+    """
+
+    tipo_residuo_id: int
+    quantidade_declarada: float = Field(gt=0, description="Precisa ser maior que zero.")
+    unidade: UnidadeMedida
+    acondicionamento: Acondicionamento
+
+
+class ManifestoCriar(BaseModel):
+    """Dados da emissao de um manifesto.
+
+    O gerador nao e informado: ele e a organizacao do usuario que emite.
+    `min_length=1` completa a regra RN08, que exige ao menos um item.
+    """
+
+    transportador_id: int
+    destinador_id: int
+    itens: list[ItemManifestoCriar] = Field(min_length=1)
+    observacoes: str | None = Field(default=None, max_length=1000)
+
+
+class ColetaEntrada(BaseModel):
+    """Confirmacao de coleta, feita pelo transportador."""
+
+    placa_veiculo: str = Field(min_length=7, max_length=10)
+    motorista_nome: str = Field(min_length=3, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class ItemRecebido(BaseModel):
+    """Conferencia de um item na chegada ao destino."""
+
+    item_id: int
+    quantidade_recebida: float = Field(ge=0, description="Pode ser zero; nao pode ser negativa.")
+
+
+class RecebimentoEntrada(BaseModel):
+    """Recebimento da carga, feito pelo destinador.
+
+    Todos os itens do manifesto precisam ser conferidos (regra RN05); quais
+    faltaram e verificado no servico, que conhece os itens daquele manifesto.
+    """
+
+    itens: list[ItemRecebido] = Field(min_length=1)
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class RecusaEntrada(BaseModel):
+    """Recusa da carga. O motivo e obrigatorio (regra RN06)."""
+
+    motivo_recusa: str = Field(min_length=10, max_length=500, description="Obrigatório.")
+
+
+class DestinacaoEntrada(BaseModel):
+    """Destinacao final. O tipo de tratamento e obrigatorio (regra RN06)."""
+
+    tipo_destinacao: TipoDestinacao
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class CancelamentoEntrada(BaseModel):
+    """Cancelamento pelo gerador, possivel apenas antes da coleta."""
+
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class ItemManifestoSaida(BaseModel):
+    model_config = LEITURA_ORM
+
+    id: int
+    tipo_residuo: TipoResiduoSaida
+    quantidade_declarada: float
+    quantidade_recebida: float | None
+    unidade: UnidadeMedida
+    acondicionamento: Acondicionamento
+    divergente: bool
+
+
+class MovimentacaoSaida(BaseModel):
+    """Um passo da linha do tempo do manifesto."""
+
+    model_config = LEITURA_ORM
+
+    id: int
+    status_anterior: StatusManifesto | None
+    status_novo: StatusManifesto
+    data_hora: datetime
+    observacao: str | None
+    usuario: UsuarioResumo
+
+
+class ManifestoResumo(BaseModel):
+    """Manifesto como aparece na listagem: sem itens, para a resposta ficar leve."""
+
+    model_config = LEITURA_ORM
+
+    id: int
+    numero: str | None
+    status: StatusManifesto
+    gerador: OrganizacaoResumo
+    transportador: OrganizacaoResumo
+    destinador: OrganizacaoResumo
+    tipo_destinacao: TipoDestinacao | None
+    emitido_em: datetime
+    atualizado_em: datetime
+
+
+class ManifestoSaida(ManifestoResumo):
+    """Manifesto completo, com itens e dados de cada etapa."""
+
+    placa_veiculo: str | None
+    motorista_nome: str | None
+    motivo_recusa: str | None
+    observacoes: str | None
+    qr_token: str
+    coletado_em: datetime | None
+    recebido_em: datetime | None
+    destinado_em: datetime | None
+    itens: list[ItemManifestoSaida]

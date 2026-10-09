@@ -29,6 +29,7 @@ from app.enums import ClasseResiduo, PapelOrganizacao, PerfilUsuario, UnidadeMed
 from app.models import Organizacao, TipoResiduo, Usuario
 from app.security import gerar_hash_senha
 from app.validacoes import completar_cnpj
+from scripts import manifestos_demo
 
 # Senha unica para todos os usuarios de demonstracao. Documentada no README:
 # e dado de teste, nao segredo.
@@ -237,6 +238,12 @@ def carregar(recriar: bool = False) -> None:
             )
 
         sessao.commit()
+
+    # Os manifestos vêm depois, em transação própria: dependem de todas as
+    # organizações, usuários e tipos de resíduo já estarem gravados.
+    with SessionLocal() as sessao:
+        total = manifestos_demo.criar(sessao)
+        print(f"\n{total} manifestos de demonstração criados.")
 
     _resumir()
 
