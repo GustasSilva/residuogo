@@ -13,9 +13,10 @@ delegam a `services/manifestos.py`.
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
 from app.dependencies import PaginaParams, Sessao, UsuarioAtual
+from app.documentos import pdf_manifesto, qr
 from app.enums import StatusManifesto
 from app.models import Manifesto, Movimentacao
 from app.paginacao import paginar
@@ -119,6 +120,60 @@ def historico(
 ) -> list[Movimentacao]:
     """Devolve todas as mudanças de status, da emissão ao estado atual."""
     return servico.historico(sessao, usuario, manifesto_id)
+
+
+@router.get(
+    "/{manifesto_id}/pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}, "description": "Manifesto em PDF"}},
+    summary="Manifesto em PDF, com QR code",
+)
+def documento_em_pdf(
+    manifesto_id: int, sessao: Sessao, usuario: UsuarioAtual
+) -> Response:
+    """Gera o documento que acompanha a carga.
+
+    É o manifesto impresso: participantes, resíduos, etapas e histórico, com
+    um QR code que abre este mesmo manifesto na tela do sistema. Buscar pelo
+    serviço antes de gerar é o que aplica a visibilidade (RN07) — o PDF de um
+    manifesto de outra organização não é gerado.
+
+    Vai como `inline` para abrir no visualizador do navegador: quem pede o
+    documento normalmente quer conferi-lo antes de imprimir ou guardar.
+    """
+    manifesto = servico.buscar(sessao, usuario, manifesto_id)
+    movimentacoes = servico.historico(sessao, usuario, manifesto_id)
+
+    return Response(
+        content=pdf_manifesto.gerar(manifesto, movimentacoes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="manifesto-{manifesto.numero}.pdf"'
+        },
+    )
+
+
+@router.get(
+    "/{manifesto_id}/qrcode.png",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}, "description": "Imagem do QR code"}},
+    summary="Imagem do QR code do manifesto",
+)
+def imagem_do_qrcode(
+    manifesto_id: int, sessao: Sessao, usuario: UsuarioAtual
+) -> Response:
+    """Devolve só o QR code, para a tela exibi-lo sem baixar o PDF inteiro.
+
+    O código aponta para o endereço do manifesto no front-end, montado a
+    partir do `qr_token`, e não do id — a etiqueta não revela quantos
+    manifestos existem no sistema.
+    """
+    manifesto = servico.buscar(sessao, usuario, manifesto_id)
+
+    return Response(
+        content=qr.imagem_do_manifesto(manifesto.qr_token),
+        media_type="image/png",
+    )
 
 
 @router.post(

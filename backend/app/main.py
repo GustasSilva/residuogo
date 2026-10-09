@@ -30,9 +30,11 @@ from app.integrations import externo, ibge, viacep
 from app.integrations.externo import CABECALHO_FONTE
 from app.routers import (
     auth,
+    dashboard,
     localidades,
     manifestos,
     organizacoes,
+    relatorios,
     tipos_residuo,
     usuarios,
 )
@@ -131,6 +133,8 @@ api.include_router(organizacoes.router)
 api.include_router(usuarios.router)
 api.include_router(tipos_residuo.router)
 api.include_router(manifestos.router)
+api.include_router(relatorios.router)
+api.include_router(dashboard.router)
 api.include_router(localidades.router)
 
 app.include_router(api)

@@ -867,6 +867,94 @@
         }
       }
     },
+    "/api/v1/manifestos/{manifesto_id}/pdf": {
+      "get": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Manifesto em PDF, com QR code",
+        "description": "Gera o documento que acompanha a carga.\n\nÉ o manifesto impresso: participantes, resíduos, etapas e histórico, com\num QR code que abre este mesmo manifesto na tela do sistema. Buscar pelo\nserviço antes de gerar é o que aplica a visibilidade (RN07) — o PDF de um\nmanifesto de outra organização não é gerado.\n\nVai como `inline` para abrir no visualizador do navegador: quem pede o\ndocumento normalmente quer conferi-lo antes de imprimir ou guardar.",
+        "operationId": "documento_em_pdf_api_v1_manifestos__manifesto_id__pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Manifesto em PDF",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/manifestos/{manifesto_id}/qrcode.png": {
+      "get": {
+        "tags": [
+          "Manifestos"
+        ],
+        "summary": "Imagem do QR code do manifesto",
+        "description": "Devolve só o QR code, para a tela exibi-lo sem baixar o PDF inteiro.\n\nO código aponta para o endereço do manifesto no front-end, montado a\npartir do `qr_token`, e não do id — a etiqueta não revela quantos\nmanifestos existem no sistema.",
+        "operationId": "imagem_do_qrcode_api_v1_manifestos__manifesto_id__qrcode_png_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "manifesto_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Manifesto Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Imagem do QR code",
+            "content": {
+              "image/png": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/manifestos/{manifesto_id}/coleta": {
       "post": {
         "tags": [
@@ -1155,6 +1243,292 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/relatorios/resumo": {
+      "get": {
+        "tags": [
+          "Relatórios"
+        ],
+        "summary": "Resumo do período: massa e volume por tipo, classe e destinação",
+        "description": "Apura o que foi destinado no período.\n\nConsidera apenas manifestos já destinados, pela data da destinação: é\nquando o resíduo efetivamente teve destino, e é o que o indicador\nambiental mede. Manifestos em trânsito ainda não produziram resultado.",
+        "operationId": "resumo_api_v1_relatorios_resumo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inicio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primeiro dia do período. Padrão: 6 meses atrás, no dia 1.",
+              "title": "Inicio"
+            },
+            "description": "Primeiro dia do período. Padrão: 6 meses atrás, no dia 1."
+          },
+          {
+            "name": "fim",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último dia do período, incluído. Padrão: hoje.",
+              "title": "Fim"
+            },
+            "description": "Último dia do período, incluído. Padrão: hoje."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/relatorios/resumo.pdf": {
+      "get": {
+        "tags": [
+          "Relatórios"
+        ],
+        "summary": "O mesmo resumo, em PDF",
+        "description": "Gera o resumo do período como documento para arquivo ou impressão.",
+        "operationId": "resumo_em_pdf_api_v1_relatorios_resumo_pdf_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "inicio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Primeiro dia do período. Padrão: 6 meses atrás, no dia 1.",
+              "title": "Inicio"
+            },
+            "description": "Primeiro dia do período. Padrão: 6 meses atrás, no dia 1."
+          },
+          {
+            "name": "fim",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Último dia do período, incluído. Padrão: hoje.",
+              "title": "Fim"
+            },
+            "description": "Último dia do período, incluído. Padrão: hoje."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumo em PDF",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/relatorios/manifestos.csv": {
+      "get": {
+        "tags": [
+          "Relatórios"
+        ],
+        "summary": "Exporta a listagem de manifestos em CSV",
+        "description": "Exporta a listagem com os mesmos filtros da rota `GET /manifestos`.\n\nO CSV é a listagem exportada, não um recorte diferente: reaproveita a\nconsulta da listagem, inclusive a visibilidade. A diferença é que não tem\npaginação — exportar meia página seria inútil.\n\nCada linha do arquivo é um **item** do manifesto, com os dados do\nmanifesto repetidos. É o formato que uma tabela dinâmica consegue somar\npor resíduo, por classe ou por destinação.",
+        "operationId": "manifestos_em_csv_api_v1_relatorios_manifestos_csv_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StatusManifesto"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtra por status.",
+              "title": "Status"
+            },
+            "description": "Filtra por status."
+          },
+          {
+            "name": "inicio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Emitidos a partir desta data.",
+              "title": "Inicio"
+            },
+            "description": "Emitidos a partir desta data."
+          },
+          {
+            "name": "fim",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Emitidos até esta data.",
+              "title": "Fim"
+            },
+            "description": "Emitidos até esta data."
+          },
+          {
+            "name": "participante_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Organização participante, em qualquer papel.",
+              "title": "Participante Id"
+            },
+            "description": "Organização participante, em qualquer papel."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Listagem em CSV",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/indicadores": {
+      "get": {
+        "tags": [
+          "Painel"
+        ],
+        "summary": "Números do painel inicial",
+        "description": "Apura os indicadores do painel para a organização do usuário.",
+        "operationId": "indicadores_api_v1_dashboard_indicadores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicadoresSaida"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/localidades/municipios-go": {
@@ -1446,6 +1820,66 @@
         "title": "DestinacaoEntrada",
         "description": "Destinacao final. O tipo de tratamento e obrigatorio (regra RN06)."
       },
+      "DesvioDeAterro": {
+        "properties": {
+          "meses": {
+            "type": "integer",
+            "title": "Meses"
+          },
+          "massa_recuperada_kg": {
+            "type": "number",
+            "title": "Massa Recuperada Kg"
+          },
+          "massa_total_kg": {
+            "type": "number",
+            "title": "Massa Total Kg"
+          },
+          "percentual": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Percentual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "meses",
+          "massa_recuperada_kg",
+          "massa_total_kg",
+          "percentual"
+        ],
+        "title": "DesvioDeAterro",
+        "description": "Proporcao da massa recuperada em relacao a massa total destinada.\n\n`percentual` e nulo quando nada foi destinado no periodo: zero daria a\nentender que nada foi recuperado, o que e diferente de nao haver dado."
+      },
+      "DivergenciasSaida": {
+        "properties": {
+          "itens_conferidos": {
+            "type": "integer",
+            "title": "Itens Conferidos"
+          },
+          "itens_divergentes": {
+            "type": "integer",
+            "title": "Itens Divergentes"
+          },
+          "percentual": {
+            "type": "number",
+            "title": "Percentual"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itens_conferidos",
+          "itens_divergentes",
+          "percentual"
+        ],
+        "title": "DivergenciasSaida",
+        "description": "Itens em que o recebido diferiu do declarado acima da tolerancia (RN05)."
+      },
       "EnderecoCepSaida": {
         "properties": {
           "cep": {
@@ -1499,6 +1933,61 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IndicadoresSaida": {
+        "properties": {
+          "referencia": {
+            "type": "string",
+            "format": "date",
+            "title": "Referencia"
+          },
+          "mes": {
+            "$ref": "#/components/schemas/ResumoDoMes"
+          },
+          "pendentes_por_status": {
+            "items": {
+              "$ref": "#/components/schemas/PendentesPorStatus"
+            },
+            "type": "array",
+            "title": "Pendentes Por Status"
+          },
+          "desvio_de_aterro": {
+            "$ref": "#/components/schemas/DesvioDeAterro"
+          },
+          "por_destinacao": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaRelatorio"
+            },
+            "type": "array",
+            "title": "Por Destinacao"
+          },
+          "serie_mensal": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaMensal"
+            },
+            "type": "array",
+            "title": "Serie Mensal"
+          },
+          "licencas_a_vencer": {
+            "items": {
+              "$ref": "#/components/schemas/LicencaAVencer"
+            },
+            "type": "array",
+            "title": "Licencas A Vencer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "referencia",
+          "mes",
+          "pendentes_por_status",
+          "desvio_de_aterro",
+          "por_destinacao",
+          "serie_mensal",
+          "licencas_a_vencer"
+        ],
+        "title": "IndicadoresSaida",
+        "description": "Tudo o que o painel inicial mostra, em uma unica resposta.\n\nReunir os seis blocos evita que a tela monte o painel com numeros apurados\nem instantes diferentes."
       },
       "ItemManifestoCriar": {
         "properties": {
@@ -1596,6 +2085,140 @@
         ],
         "title": "ItemRecebido",
         "description": "Conferencia de um item na chegada ao destino."
+      },
+      "LicencaAVencer": {
+        "properties": {
+          "organizacao_id": {
+            "type": "integer",
+            "title": "Organizacao Id"
+          },
+          "razao_social": {
+            "type": "string",
+            "title": "Razao Social"
+          },
+          "papel": {
+            "$ref": "#/components/schemas/PapelOrganizacao"
+          },
+          "licenca_numero": {
+            "type": "string",
+            "title": "Licenca Numero"
+          },
+          "licenca_validade": {
+            "type": "string",
+            "format": "date",
+            "title": "Licenca Validade"
+          },
+          "dias_restantes": {
+            "type": "integer",
+            "title": "Dias Restantes"
+          },
+          "vencida": {
+            "type": "boolean",
+            "title": "Vencida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "organizacao_id",
+          "razao_social",
+          "papel",
+          "licenca_numero",
+          "licenca_validade",
+          "dias_restantes",
+          "vencida"
+        ],
+        "title": "LicencaAVencer",
+        "description": "Licenca ambiental vencida ou proxima do vencimento.\n\n`dias_restantes` negativo indica licenca ja vencida - a que impede a\nemissao de novos manifestos pela regra RN04."
+      },
+      "LinhaMensal": {
+        "properties": {
+          "chave": {
+            "type": "string",
+            "title": "Chave",
+            "description": "Identificador do grupo (codigo, classe, destinacao)."
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo",
+            "description": "O mesmo grupo escrito para leitura humana."
+          },
+          "massa_kg": {
+            "type": "number",
+            "title": "Massa Kg"
+          },
+          "volume_m3": {
+            "type": "number",
+            "title": "Volume M3"
+          },
+          "manifestos": {
+            "type": "integer",
+            "title": "Manifestos",
+            "description": "Manifestos distintos que compoem a linha."
+          },
+          "itens": {
+            "type": "integer",
+            "title": "Itens"
+          },
+          "inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Inicio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chave",
+          "rotulo",
+          "massa_kg",
+          "volume_m3",
+          "manifestos",
+          "itens",
+          "inicio"
+        ],
+        "title": "LinhaMensal",
+        "description": "Linha da serie do painel, com a data que ordena o grafico."
+      },
+      "LinhaRelatorio": {
+        "properties": {
+          "chave": {
+            "type": "string",
+            "title": "Chave",
+            "description": "Identificador do grupo (codigo, classe, destinacao)."
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo",
+            "description": "O mesmo grupo escrito para leitura humana."
+          },
+          "massa_kg": {
+            "type": "number",
+            "title": "Massa Kg"
+          },
+          "volume_m3": {
+            "type": "number",
+            "title": "Volume M3"
+          },
+          "manifestos": {
+            "type": "integer",
+            "title": "Manifestos",
+            "description": "Manifestos distintos que compoem a linha."
+          },
+          "itens": {
+            "type": "integer",
+            "title": "Itens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chave",
+          "rotulo",
+          "massa_kg",
+          "volume_m3",
+          "manifestos",
+          "itens"
+        ],
+        "title": "LinhaRelatorio",
+        "description": "Uma linha de qualquer agrupamento do resumo.\n\nMassa e volume aparecem em colunas separadas, e uma das duas costuma ser\nzero: converter volume em massa exigiria arbitrar a densidade de cada\nresiduo. As duas conversoes feitas sao exatas e dentro da mesma grandeza\n(1 t = 1000 kg; 1000 L = 1 m3)."
       },
       "LoginEntrada": {
         "properties": {
@@ -2340,6 +2963,29 @@
         "title": "PapelOrganizacao",
         "description": "Posicao da organizacao no ciclo do residuo.\n\nO papel da organizacao e o que define quais acoes seus usuarios podem\nexecutar sobre um manifesto (regra RN01)."
       },
+      "PendentesPorStatus": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/StatusManifesto"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "rotulo",
+          "total"
+        ],
+        "title": "PendentesPorStatus",
+        "description": "Quantos manifestos aguardam acao em cada estado nao final."
+      },
       "PerfilUsuario": {
         "type": "string",
         "enum": [
@@ -2396,6 +3042,101 @@
         "title": "RecusaEntrada",
         "description": "Recusa da carga. O motivo e obrigatorio (regra RN06)."
       },
+      "ResumoDoMes": {
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Inicio"
+          },
+          "fim": {
+            "type": "string",
+            "format": "date",
+            "title": "Fim"
+          },
+          "manifestos_emitidos": {
+            "type": "integer",
+            "title": "Manifestos Emitidos",
+            "description": "Emitidos no mes, qualquer status."
+          },
+          "manifestos_destinados": {
+            "type": "integer",
+            "title": "Manifestos Destinados"
+          },
+          "massa_kg": {
+            "type": "number",
+            "title": "Massa Kg"
+          },
+          "volume_m3": {
+            "type": "number",
+            "title": "Volume M3"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inicio",
+          "fim",
+          "manifestos_emitidos",
+          "manifestos_destinados",
+          "massa_kg",
+          "volume_m3"
+        ],
+        "title": "ResumoDoMes",
+        "description": "Os numeros do mes corrente mostrados nos cartoes do painel."
+      },
+      "ResumoSaida": {
+        "properties": {
+          "inicio": {
+            "type": "string",
+            "format": "date",
+            "title": "Inicio"
+          },
+          "fim": {
+            "type": "string",
+            "format": "date",
+            "title": "Fim"
+          },
+          "total": {
+            "$ref": "#/components/schemas/LinhaRelatorio"
+          },
+          "por_tipo": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaRelatorio"
+            },
+            "type": "array",
+            "title": "Por Tipo"
+          },
+          "por_classe": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaRelatorio"
+            },
+            "type": "array",
+            "title": "Por Classe"
+          },
+          "por_destinacao": {
+            "items": {
+              "$ref": "#/components/schemas/LinhaRelatorio"
+            },
+            "type": "array",
+            "title": "Por Destinacao"
+          },
+          "divergencias": {
+            "$ref": "#/components/schemas/DivergenciasSaida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "inicio",
+          "fim",
+          "total",
+          "por_tipo",
+          "por_classe",
+          "por_destinacao",
+          "divergencias"
+        ],
+        "title": "ResumoSaida",
+        "description": "Resumo de um periodo, considerando apenas manifestos ja destinados."
+      },
       "StatusManifesto": {
         "type": "string",
         "enum": [
@@ -2420,7 +3161,7 @@
           "OUTRO_TRATAMENTO"
         ],
         "title": "TipoDestinacao",
-        "description": "Tratamento final aplicado ao residuo.\n\nO agrupamento usado no indicador ambiental esta em `GRUPOS_DESTINACAO`,\nlogo abaixo."
+        "description": "Tratamento final aplicado ao residuo.\n\nO agrupamento usado no indicador ambiental esta em\n`DESTINACOES_RECUPERACAO` e `DESTINACOES_DISPOSICAO`, no fim do modulo."
       },
       "TipoResiduoCriar": {
         "properties": {

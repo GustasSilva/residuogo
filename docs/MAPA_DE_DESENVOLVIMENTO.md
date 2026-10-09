@@ -19,11 +19,11 @@ depuração e não apenas como anedota.
 | F1 | Base: modelos, autenticação JWT, erros RFC 7807, cadastros, `/health`, SOAP com WSDL e cliente `zeep` | `65d81b3` | concluída |
 | F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08, seed com 40 manifestos | `8362570` | concluída |
 | F3 | Integrações IBGE e ViaCEP, cache em memória, tratamento de indisponibilidade | `6f99b98` | concluída |
-| F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, dashboard de indicadores | — | em andamento |
+| F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | (este commit) | concluída |
 | F5 | Front-end (React + Vite) | — | a fazer |
 | F6 | Acabamento: README final, diagramas e prints em `docs/` | — | a fazer |
 
-Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes.
+Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes.
 
 **O SOAP foi construído na F1, e não na F3 como previa o escopo original.** Era
 o ponto de maior risco técnico do projeto — a tecnologia menos usada hoje, com

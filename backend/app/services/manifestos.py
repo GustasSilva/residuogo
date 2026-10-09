@@ -23,14 +23,13 @@ sobre o *formato* da requisicao, e validadas ali o erro volta apontando o
 campo exato, no formato RFC 7807.
 """
 
-from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+from datetime import date, timedelta
 
-from sqlalchemy import Select, or_, select
+from sqlalchemy import ColumnElement, Select, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.config import config
 from app.database import agora_utc
+from app.datas import em_local, inicio_do_dia_em_utc
 from app.enums import PapelOrganizacao, StatusManifesto
 from app.errors import (
     PermissaoNegada,
@@ -252,15 +251,28 @@ def buscar_por_token(sessao: Session, usuario: Usuario, token: str) -> Manifesto
     return manifesto
 
 
-def _inicio_do_dia_em_utc(dia: date) -> datetime:
-    """Converte uma data local no instante UTC em que aquele dia comeca.
+def condicoes_de_visibilidade(usuario: Usuario) -> list[ColumnElement[bool]]:
+    """Condicoes SQL que implementam a regra RN07.
 
-    Os filtros de periodo chegam como data ("2026-10-01"), mas as datas sao
-    gravadas em UTC. Sem esta conversao, um manifesto emitido as 22h de
-    Goiania (01h do dia seguinte em UTC) cairia no dia errado do filtro.
+    O usuario comum ve apenas os manifestos em que a sua organizacao e um dos
+    tres participantes; o ADMIN ve todos, e para ele a lista volta vazia - o
+    que, aplicado com `where(*condicoes)`, nao filtra nada.
+
+    Devolve condicoes em vez de uma consulta pronta para que a listagem, os
+    relatorios e o painel apliquem a mesma regra sobre consultas diferentes.
+    Mesmo formato de `condicoes_apta`, em `services/organizacoes.py`.
     """
-    local = datetime.combine(dia, time.min, tzinfo=ZoneInfo(config.fuso_local))
-    return local.astimezone(timezone.utc)
+    if usuario.e_admin:
+        return []
+
+    propria = usuario.organizacao_id
+    return [
+        or_(
+            Manifesto.gerador_id == propria,
+            Manifesto.transportador_id == propria,
+            Manifesto.destinador_id == propria,
+        )
+    ]
 
 
 def montar_consulta(
@@ -281,26 +293,18 @@ def montar_consulta(
     consulta = _consulta_completa()
 
     # Regra RN07, aplicada antes de qualquer filtro opcional.
-    if not usuario.e_admin:
-        propria = usuario.organizacao_id
-        consulta = consulta.where(
-            or_(
-                Manifesto.gerador_id == propria,
-                Manifesto.transportador_id == propria,
-                Manifesto.destinador_id == propria,
-            )
-        )
+    consulta = consulta.where(*condicoes_de_visibilidade(usuario))
 
     if status is not None:
         consulta = consulta.where(Manifesto.status == status)
 
     if inicio is not None:
-        consulta = consulta.where(Manifesto.emitido_em >= _inicio_do_dia_em_utc(inicio))
+        consulta = consulta.where(Manifesto.emitido_em >= inicio_do_dia_em_utc(inicio))
 
     if fim is not None:
         # O dia final entra inteiro: compara-se com o inicio do dia seguinte.
         consulta = consulta.where(
-            Manifesto.emitido_em < _inicio_do_dia_em_utc(fim + timedelta(days=1))
+            Manifesto.emitido_em < inicio_do_dia_em_utc(fim + timedelta(days=1))
         )
 
     if participante_id is not None:
@@ -387,7 +391,7 @@ def numero_do_manifesto(manifesto: Manifesto) -> str:
     ano usa o fuso local, para que um manifesto emitido a noite do dia 31 de
     dezembro nao receba o numero do ano seguinte.
     """
-    ano = manifesto.emitido_em.astimezone(ZoneInfo(config.fuso_local)).year
+    ano = em_local(manifesto.emitido_em).year
     return f"RGO-{ano}-{manifesto.id:06d}"
 
 

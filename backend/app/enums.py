@@ -77,8 +77,8 @@ class StatusManifesto(str, Enum):
 class TipoDestinacao(str, Enum):
     """Tratamento final aplicado ao residuo.
 
-    O agrupamento usado no indicador ambiental esta em `GRUPOS_DESTINACAO`,
-    logo abaixo.
+    O agrupamento usado no indicador ambiental esta em
+    `DESTINACOES_RECUPERACAO` e `DESTINACOES_DISPOSICAO`, no fim do modulo.
     """
 
     RECICLAGEM = "RECICLAGEM"
@@ -127,3 +127,46 @@ STATUS_EM_ANDAMENTO = frozenset(
         StatusManifesto.RECEBIDO,
     }
 )
+
+
+# ---------------------------------------------------------------------------
+# Rotulos legiveis
+# ---------------------------------------------------------------------------
+
+# O valor do enum e um identificador tecnico ("EM_TRANSPORTE"). Onde o texto e
+# lido por uma pessoa - no PDF do manifesto e nos relatorios - entra o rotulo.
+# Ficam aqui, e nao em cada documento, para que o mesmo estado nao apareca
+# escrito de duas formas diferentes em dois lugares do sistema.
+
+ROTULOS_CLASSE = {
+    ClasseResiduo.I: "Classe I - perigoso",
+    ClasseResiduo.IIA: "Classe II A - não inerte",
+    ClasseResiduo.IIB: "Classe II B - inerte",
+}
+
+ROTULOS_DESTINACAO = {
+    TipoDestinacao.RECICLAGEM: "Reciclagem",
+    TipoDestinacao.COMPOSTAGEM: "Compostagem",
+    TipoDestinacao.COPROCESSAMENTO: "Coprocessamento",
+    TipoDestinacao.INCINERACAO: "Incineração",
+    TipoDestinacao.ATERRO: "Aterro sanitário",
+    TipoDestinacao.OUTRO_TRATAMENTO: "Outro tratamento",
+}
+
+ROTULOS_STATUS = {
+    StatusManifesto.EMITIDO: "Emitido",
+    StatusManifesto.EM_TRANSPORTE: "Em transporte",
+    StatusManifesto.RECEBIDO: "Recebido",
+    StatusManifesto.RECUSADO: "Recusado",
+    StatusManifesto.DESTINADO: "Destinado",
+    StatusManifesto.CANCELADO: "Cancelado",
+}
+
+ROTULOS_ACONDICIONAMENTO = {
+    Acondicionamento.TAMBOR: "Tambor",
+    Acondicionamento.BOMBONA: "Bombona",
+    Acondicionamento.CACAMBA: "Caçamba",
+    Acondicionamento.BIG_BAG: "Big bag",
+    Acondicionamento.GRANEL: "Granel",
+    Acondicionamento.OUTRO: "Outro",
+}

@@ -39,9 +39,12 @@ class TestToken:
         assert ler_token(criar_token(42)) == 42
 
     def test_token_alterado_e_recusado(self) -> None:
-        token = criar_token(42)
-        # Troca o ultimo caractere, invalidando a assinatura.
-        adulterado = token[:-1] + ("A" if token[-1] != "A" else "B")
+        cabecalho, carga, assinatura = criar_token(42).split(".")
+        # Troca o primeiro caractere da assinatura. O ultimo nao serviria: em
+        # base64url ele carrega bits de preenchimento, e certas trocas
+        # decodificam para os mesmos bytes - o token continuaria valido.
+        trocado = ("A" if assinatura[0] != "A" else "B") + assinatura[1:]
+        adulterado = f"{cabecalho}.{carga}.{trocado}"
         with pytest.raises(jwt.InvalidTokenError):
             ler_token(adulterado)
 

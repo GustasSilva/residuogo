@@ -31,3 +31,6 @@ zeep==4.3.1
 # Simula as respostas do IBGE e do ViaCEP: os testes nao chamam a internet,
 # e e assim que da para testar tempo limite e indisponibilidade de proposito.
 respx==0.22.0
+# Le de volta os PDF gerados, para os testes conferirem o conteudo do
+# documento e nao apenas que o arquivo foi produzido.
+pypdf==5.1.0

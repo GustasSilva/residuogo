@@ -33,6 +33,11 @@ class Configuracao(BaseSettings):
     # Origens liberadas no CORS (porta padrao do Vite no front-end).
     cors_origens: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+    # Endereco publico do front-end. E o que vai dentro do QR code impresso no
+    # manifesto: quem escaneia a etiqueta precisa cair na tela do sistema, e o
+    # servidor nao tem como deduzir onde essa tela esta publicada.
+    url_do_front: str = "http://localhost:5173"
+
     # Integracoes externas (IBGE e ViaCEP).
     http_timeout_segundos: float = 5.0
     http_tentativas: int = 2  # 1 chamada original + 1 nova tentativa

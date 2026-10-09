@@ -137,7 +137,7 @@ cd backend
 .venv/Scripts/python.exe -m pytest
 ```
 
-155 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
+183 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
 
 Nenhum teste acessa a internet: o `respx` intercepta as chamadas às APIs externas e devolve a resposta que o teste determinar — é assim que dá para provocar de propósito um tempo limite, um erro 500 e a indisponibilidade total do IBGE.
 
@@ -207,7 +207,7 @@ Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, s
 | F1 | Base: models, autenticação JWT, erros RFC 7807, cadastros, `/health`, SOAP | concluída |
 | F2 | Manifesto, itens, máquina de estados, histórico, regras RN01–RN08 | concluída |
 | F3 | IBGE e ViaCEP com cache em memória e queda tratada | concluída |
-| F4 | PDF com QR code, CSV, dashboard | a fazer |
+| F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | concluída |
 | F5 | Front-end | a fazer |
 | F6 | README final, diagramas e prints em `docs/` | a fazer |
 

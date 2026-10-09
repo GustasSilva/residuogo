@@ -385,3 +385,115 @@ class EnderecoCepSaida(BaseModel):
     municipio_nome: str
     municipio_ibge_codigo: str
     uf: str = Field(description="Sigla do estado, com 2 letras.")
+
+
+# ---------------------------------------------------------------------------
+# Relatorios e painel
+# ---------------------------------------------------------------------------
+
+
+class LinhaRelatorio(BaseModel):
+    """Uma linha de qualquer agrupamento do resumo.
+
+    Massa e volume aparecem em colunas separadas, e uma das duas costuma ser
+    zero: converter volume em massa exigiria arbitrar a densidade de cada
+    residuo. As duas conversoes feitas sao exatas e dentro da mesma grandeza
+    (1 t = 1000 kg; 1000 L = 1 m3).
+    """
+
+    chave: str = Field(description="Identificador do grupo (codigo, classe, destinacao).")
+    rotulo: str = Field(description="O mesmo grupo escrito para leitura humana.")
+    massa_kg: float
+    volume_m3: float
+    manifestos: int = Field(description="Manifestos distintos que compoem a linha.")
+    itens: int
+
+
+class LinhaMensal(LinhaRelatorio):
+    """Linha da serie do painel, com a data que ordena o grafico."""
+
+    inicio: date
+
+
+class DivergenciasSaida(BaseModel):
+    """Itens em que o recebido diferiu do declarado acima da tolerancia (RN05)."""
+
+    itens_conferidos: int
+    itens_divergentes: int
+    percentual: float
+
+
+class ResumoSaida(BaseModel):
+    """Resumo de um periodo, considerando apenas manifestos ja destinados."""
+
+    inicio: date
+    fim: date
+    total: LinhaRelatorio
+    por_tipo: list[LinhaRelatorio]
+    por_classe: list[LinhaRelatorio]
+    por_destinacao: list[LinhaRelatorio]
+    divergencias: DivergenciasSaida
+
+
+class ResumoDoMes(BaseModel):
+    """Os numeros do mes corrente mostrados nos cartoes do painel."""
+
+    inicio: date
+    fim: date
+    manifestos_emitidos: int = Field(description="Emitidos no mes, qualquer status.")
+    manifestos_destinados: int
+    massa_kg: float
+    volume_m3: float
+
+
+class PendentesPorStatus(BaseModel):
+    """Quantos manifestos aguardam acao em cada estado nao final."""
+
+    status: StatusManifesto
+    rotulo: str
+    total: int
+
+
+class DesvioDeAterro(BaseModel):
+    """Proporcao da massa recuperada em relacao a massa total destinada.
+
+    `percentual` e nulo quando nada foi destinado no periodo: zero daria a
+    entender que nada foi recuperado, o que e diferente de nao haver dado.
+    """
+
+    meses: int
+    massa_recuperada_kg: float
+    massa_total_kg: float
+    percentual: float | None
+
+
+class LicencaAVencer(BaseModel):
+    """Licenca ambiental vencida ou proxima do vencimento.
+
+    `dias_restantes` negativo indica licenca ja vencida - a que impede a
+    emissao de novos manifestos pela regra RN04.
+    """
+
+    organizacao_id: int
+    razao_social: str
+    papel: PapelOrganizacao
+    licenca_numero: str
+    licenca_validade: date
+    dias_restantes: int
+    vencida: bool
+
+
+class IndicadoresSaida(BaseModel):
+    """Tudo o que o painel inicial mostra, em uma unica resposta.
+
+    Reunir os seis blocos evita que a tela monte o painel com numeros apurados
+    em instantes diferentes.
+    """
+
+    referencia: date
+    mes: ResumoDoMes
+    pendentes_por_status: list[PendentesPorStatus]
+    desvio_de_aterro: DesvioDeAterro
+    por_destinacao: list[LinhaRelatorio]
+    serie_mensal: list[LinhaMensal]
+    licencas_a_vencer: list[LicencaAVencer]
