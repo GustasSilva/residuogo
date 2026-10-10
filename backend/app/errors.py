@@ -168,6 +168,7 @@ def _uri_do_tipo(codigo: str) -> str:
     return f"{TIPO_BASE}/{codigo.lower().replace('_', '-')}"
 
 
+# APS-TRECHO 3: Todo erro responde no formato RFC 7807
 def _resposta_problema(
     request: Request,
     *,
@@ -192,6 +193,7 @@ def _resposta_problema(
         "erros": erros or [],
     }
     return JSONResponse(status_code=status, content=corpo, media_type=MIDIA_PROBLEMA)
+# APS-FIM
 
 
 # Traducao dos erros que o proprio framework levanta (rota inexistente, metodo
@@ -235,6 +237,7 @@ def registrar_handlers(app: FastAPI) -> None:
     precisa tratar erro: basta levantar a excecao adequada.
     """
 
+    # APS-TRECHO 3: Todo erro responde no formato RFC 7807
     @app.exception_handler(ErroDominio)
     async def _dominio(request: Request, exc: ErroDominio) -> JSONResponse:
         """Erros previstos: a mensagem vai inteira para o cliente."""
@@ -247,6 +250,7 @@ def registrar_handlers(app: FastAPI) -> None:
             detalhe=exc.detalhe,
             erros=exc.erros,
         )
+    # APS-FIM
 
     @app.exception_handler(RequestValidationError)
     async def _validacao(request: Request, exc: RequestValidationError) -> JSONResponse:

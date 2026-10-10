@@ -63,6 +63,7 @@ TOLERANCIA_DIVERGENCIA = 0.05
 # transicao nova e acrescentar uma linha - sem tocar na logica que o percorre.
 # Os estados que nao aparecem como chave (DESTINADO, RECUSADO, CANCELADO) sao
 # finais: deles nao sai nenhuma transicao.
+# APS-TRECHO 2: A máquina de estados do manifesto
 TRANSICOES: dict[StatusManifesto, dict[StatusManifesto, PapelOrganizacao]] = {
     StatusManifesto.EMITIDO: {
         StatusManifesto.EM_TRANSPORTE: PapelOrganizacao.TRANSPORTADOR,
@@ -76,6 +77,7 @@ TRANSICOES: dict[StatusManifesto, dict[StatusManifesto, PapelOrganizacao]] = {
         StatusManifesto.DESTINADO: PapelOrganizacao.DESTINADOR,
     },
 }
+# APS-FIM
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +162,7 @@ def _exigir_visibilidade(usuario: Usuario, manifesto: Manifesto) -> None:
 # ---------------------------------------------------------------------------
 
 
+# APS-TRECHO 2: A máquina de estados do manifesto
 def _aplicar_transicao(
     sessao: Session,
     usuario: Usuario,
@@ -210,6 +213,7 @@ def _aplicar_transicao(
             observacao=observacao,
         )
     )
+# APS-FIM
 
 
 # ---------------------------------------------------------------------------

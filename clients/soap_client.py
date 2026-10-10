@@ -28,6 +28,7 @@ from zeep.exceptions import Fault
 WSDL_PADRAO = "http://127.0.0.1:8000/soap/manifesto?wsdl"
 
 
+# APS-TRECHO 5: Consumo do serviço SOAP com zeep — nenhum XML no código
 def consultar(url_wsdl: str, numero: str, cnpj: str) -> int:
     """Consulta um manifesto e imprime o resultado.
 
@@ -69,6 +70,7 @@ def consultar(url_wsdl: str, numero: str, cnpj: str) -> int:
     print(f"  tipo destinação : {resposta.tipo_destinacao or '(ainda não destinado)'}")
     print(f"  atualizado em   : {resposta.atualizado_em}")
     return 0
+# APS-FIM
 
 
 def main() -> int:

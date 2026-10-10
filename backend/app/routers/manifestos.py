@@ -37,6 +37,7 @@ from app.services import manifestos as servico
 router = APIRouter(prefix="/manifestos", tags=["Manifestos"])
 
 
+# APS-TRECHO 1: Rotas REST — cada transição é um POST para um sub-recurso
 @router.post(
     "",
     response_model=ManifestoSaida,
@@ -50,6 +51,7 @@ def emitir(dados: ManifestoCriar, sessao: Sessao, usuario: UsuarioAtual) -> Mani
     participantes são validados quanto a papel, situação e licença (RN04).
     """
     return servico.emitir(sessao, usuario, dados)
+# APS-FIM
 
 
 @router.get(
@@ -176,6 +178,7 @@ def imagem_do_qrcode(
     )
 
 
+# APS-TRECHO 1: Rotas REST — cada transição é um POST para um sub-recurso
 @router.post(
     "/{manifesto_id}/coleta",
     response_model=ManifestoSaida,
@@ -198,6 +201,7 @@ def registrar_recebimento(
 ) -> Manifesto:
     """EM_TRANSPORTE → RECEBIDO, conferindo a quantidade de cada item (RN05)."""
     return servico.registrar_recebimento(sessao, usuario, manifesto_id, dados)
+# APS-FIM
 
 
 @router.post(

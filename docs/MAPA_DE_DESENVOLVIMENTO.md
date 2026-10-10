@@ -21,7 +21,7 @@ depuração e não apenas como anedota.
 | F3 | Integrações IBGE e ViaCEP, cache em memória, tratamento de indisponibilidade | `6f99b98` | concluída |
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | `54d0881` | concluída |
 | F5 | Front-end em React: login, painel, manifestos, emissão, detalhe com ações por papel, QR, relatórios e cadastros | `939d5a7` | concluída |
-| F6 | Acabamento: README final, diagramas e prints em `docs/` | — | a fazer |
+| F6 | Acabamento: diagramas, capturas de tela e extração dos trechos de código para o relatório | (este commit) | concluída |
 
 Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes; F5, 184 testes.
 
@@ -351,6 +351,29 @@ e desligado à mão, o resultado guarda a qual consulta ele pertence; se a chave
 gravada não é a atual, a tela está carregando. Assim não existe instante em que
 o resultado de um filtro apareça como se fosse de outro.
 
+### 2.18 O relatório impresso é extraído do código, não copiado dele
+
+**Contexto.** O relatório de código da APS tem limite de 10 páginas — cerca de
+380 linhas. O projeto tem muito mais que isso, então é preciso escolher o que
+vai para o papel.
+
+**Decisão.** Os trechos escolhidos ficam marcados no próprio código-fonte, com
+um comentário de abertura e outro de fechamento, e um script os recolhe em
+`docs/TRECHOS_DE_CODIGO.md`.
+
+**Por quê.** Trecho copiado à mão para dentro de um documento envelhece na
+primeira correção aplicada ao código — e ninguém percebe, porque as duas
+cópias não se falam. Extraindo, o documento é sempre o código que roda. De
+quebra, o script conta as linhas e avisa se a seleção passar do limite, o que
+transforma "será que cabe?" em uma resposta objetiva.
+
+**O que ficou de fora, e por quê.** Os seis trechos (299 linhas) privilegiam
+os dois web services, que são o tema do trabalho: as rotas REST, a máquina de
+estados, o tratamento de erro, o serviço SOAP, o cliente `zeep` e a integração
+externa. O front-end não tem trecho próprio — ele aparece no relatório pelas
+capturas de tela, que mostram melhor o que ele faz do que o seu código
+mostraria.
+
 ---
 
 ## 3. Problemas e defeitos encontrados
@@ -581,6 +604,36 @@ navegador considera "resposta a um gesto do usuário", a abertura é barrada.
 bloqueada. Nesse caso o arquivo é **baixado** — um download nunca é bloqueado, e
 o usuário fica com o documento de qualquer forma.
 
+### 3.17 O extrator de trechos encontrava a si mesmo
+
+**Sintoma.** Na primeira execução, `docs/TRECHOS_DE_CODIGO.md` apontou o
+próprio script de extração como um dos arquivos do trecho 3.
+
+**Causa.** A documentação do script mostra o formato da marca como exemplo.
+Como a busca varre todos os arquivos do projeto, o exemplo foi lido como se
+fosse uma marca de verdade.
+
+**Correção.** O script ignora o próprio arquivo, com o motivo escrito na
+função. Trocar o exemplo por um texto que não casasse com a busca resolveria
+pela metade: a marca de fechamento continuaria lá, e aí o script acusaria um
+"APS-FIM sem APS-TRECHO" — erro que ele levanta de propósito, porque marca
+malformada geraria um documento errado em silêncio.
+
+### 3.18 Rótulos cortados nos diagramas
+
+**Sintoma.** Ao exportar as imagens, três transições do diagrama de estados
+apareceram truncadas no meio da palavra ("transportador confirma a col") e dois
+retângulos do fluxograma cortaram o nome do erro ("404 RECURSO_NAO_ENCON").
+
+**Causa.** O Mermaid dimensiona a caixa de cada rótulo e corta o que passa —
+sem reticências, sem aviso. Palavras longas sem espaço, como os códigos de
+erro, não têm onde quebrar.
+
+**Correção.** Rótulos curtos nas transições e os códigos de erro movidos do
+desenho para o texto que acompanha o diagrama. A conferência foi feita lendo
+de volta os rótulos renderizados na página, e não a olho: o corte é discreto o
+bastante para passar despercebido em uma figura.
+
 ---
 
 ## 4. Pontos que o escopo deixou abertos, e como foram fechados
@@ -626,6 +679,8 @@ atende ao que se espera dele; a verificação confronta o sistema com o mundo.
 | Front-end, visibilidade e papéis | o administrador não recebe formulário de ação nenhum, e a tela explica por quê (RN01); o transportador vê apenas os manifestos da sua organização; "Emitir manifesto" e "Cadastros" só aparecem para quem pode usá-los |
 | Front-end, integrações | o CEP 74085-100 preencheu "Rua 110", "Setor Sul" e selecionou Goiânia na lista de 246 municípios do IBGE; um CEP de São Paulo foi recusado com aviso, sem sujar o formulário |
 | Front-end, QR code | o endereço `/qr/<token>` da etiqueta abriu o manifesto correspondente |
+| Diagramas | cada figura foi exportada do arquivo-fonte e conferida lendo de volta os rótulos renderizados, e não só olhando a imagem (ver problema 3.18) |
+| Trechos do relatório | extraídos do código por script, com a contagem de linhas conferida contra o limite de páginas: 299 de cerca de 380 |
 
 Números que o seed produz, medidos no painel: **78,2% de desvio de aterro** na
 janela de seis meses (205.280 kg recuperados de 262.518 kg destinados) e **14 de
@@ -637,8 +692,7 @@ mesmo período.
 
 ## 6. O que falta
 
-**No código.** F6: acabamento, diagramas e prints em `docs/`, e a marcação dos
-trechos de código que vão para o relatório impresso.
+**No código, nada.** As seis fases estão concluídas e verificadas.
 
 **No trabalho escrito, fora do código.** A proposta de uma a duas páginas para
 o coordenador auxiliar; a divisão do trabalho entre os três alunos; o capítulo
@@ -646,8 +700,9 @@ de 4 a 8 páginas sobre fundamentos de web services (sem dependência do código
 a dissertação sobre formação e interdisciplinaridade; a bibliografia; a ficha
 cronológica da APS; e a confirmação das margens com o orientador.
 
-**Sobre o relatório de código.** O limite é de 10 páginas em Arial 12 com
-espaçamento 1,5, o que corresponde a cerca de 380 linhas. Por isso a convenção
-de marcar no máximo seis trechos com `# APS-TRECHO`, escolhidos entre os mais
-representativos: um endpoint, a máquina de estados, o tradutor de erros, o
-serviço SOAP, o cliente `zeep` e a integração com cache.
+**O que já está pronto para ser colado no documento.** Os seis trechos de
+código com a contagem de linhas (`TRECHOS_DE_CODIGO.md`), os cinco diagramas
+(`DIAGRAMAS.md` e `imagens/`), as sete capturas de tela com legenda sugerida
+(`TELAS.md`), os dois contratos dos web services (`openapi.json` e
+`manifesto.wsdl`) e este mapa, que é a matéria-prima da parte do documento que
+conta como o sistema foi construído.

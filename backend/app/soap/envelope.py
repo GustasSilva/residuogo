@@ -40,6 +40,7 @@ class EnvelopeInvalido(Exception):
     """A mensagem recebida nao e um envelope SOAP utilizavel."""
 
 
+# APS-TRECHO 4: Serviço SOAP escrito à mão — leitura do envelope e SOAP Fault
 def _leitor_seguro() -> etree.XMLParser:
     """Cria o leitor de XML com as defesas necessarias ligadas.
 
@@ -93,6 +94,7 @@ def extrair_operacao(mensagem: bytes) -> tuple[str, dict[str, str]]:
     }
 
     return operacao, parametros
+# APS-FIM
 
 
 def _novo_envelope() -> tuple[etree._Element, etree._Element]:
@@ -125,6 +127,7 @@ def montar_resposta(operacao: str, campos: dict[str, str | None]) -> bytes:
     return _serializar(envelope)
 
 
+# APS-TRECHO 4: Serviço SOAP escrito à mão — leitura do envelope e SOAP Fault
 def montar_falha(mensagem: str, codigo: str, *, culpa_do_cliente: bool = True) -> bytes:
     """Monta um SOAP Fault, a forma padrao de relatar erro em SOAP.
 
@@ -153,3 +156,4 @@ def montar_falha(mensagem: str, codigo: str, *, culpa_do_cliente: bool = True) -
     etree.SubElement(erro, f"{{{NS_SERVICO}}}mensagem").text = mensagem
 
     return _serializar(envelope)
+# APS-FIM

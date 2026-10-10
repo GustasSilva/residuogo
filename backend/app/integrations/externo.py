@@ -126,6 +126,7 @@ def obter_json(url: str, *, servico: str) -> Any:
     raise FalhaDeComunicacao(f"{servico} não respondeu ({ultima_falha}).")
 
 
+# APS-TRECHO 6: Integração externa — cache, queda tratada e procedência do dado
 def obter_com_cache(
     *,
     cache: CacheComValidade,
@@ -169,3 +170,4 @@ def obter_com_cache(
 
     cache.guardar(chave, dado, ttl_segundos)
     return dado, Fonte.API
+# APS-FIM

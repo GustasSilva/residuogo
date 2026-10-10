@@ -69,11 +69,11 @@ A transportadora **Rodolimp está com a licença ambiental vencida de propósito
 ```mermaid
 stateDiagram-v2
     [*] --> EMITIDO: gerador emite
-    EMITIDO --> EM_TRANSPORTE: transportador confirma coleta
+    EMITIDO --> EM_TRANSPORTE: transportador coleta
     EMITIDO --> CANCELADO: gerador cancela
-    EM_TRANSPORTE --> RECEBIDO: destinador confirma recebimento
-    EM_TRANSPORTE --> RECUSADO: destinador recusa (motivo obrigatório)
-    RECEBIDO --> DESTINADO: destinador informa destinação
+    EM_TRANSPORTE --> RECEBIDO: destinador recebe
+    EM_TRANSPORTE --> RECUSADO: destinador recusa
+    RECEBIDO --> DESTINADO: destinador destina
     DESTINADO --> [*]
     RECUSADO --> [*]
     CANCELADO --> [*]
@@ -143,6 +143,10 @@ Os CEPs e os códigos de município do seed são reais e conferidos nas duas API
 
 React com Vite e TypeScript, em `frontend/`. Consome a mesma API REST documentada no Swagger — nada no sistema é exclusivo da tela.
 
+![Painel do ResíduoGO](docs/imagens/tela-2-painel.jpg)
+
+As demais telas estão em `docs/TELAS.md`, com legenda para cada uma.
+
 | Tela | O que faz |
 |---|---|
 | Login | autentica e guarda o token; traz os acessos de demonstração para a apresentação |
@@ -194,10 +198,10 @@ residuogo/
 │   │   ├── routers/         # rotas REST
 │   │   ├── services/        # regras de negócio
 │   │   └── soap/            # envelope, WSDL e rota do serviço SOAP
-│   ├── scripts/             # seed e exportação dos contratos
+│   ├── scripts/             # seed, contratos e trechos para o relatório
 │   └── tests/
 ├── clients/soap_client.py   # consumidor do serviço SOAP (zeep)
-├── docs/                    # openapi.json e WSDL exportados
+├── docs/                    # insumos do trabalho escrito (ver adiante)
 └── frontend/
     └── src/
         ├── App.tsx          # rotas
@@ -234,14 +238,32 @@ O campo `codigo` permite ao front-end reagir ao erro sem depender do texto da me
 
 ## Insumos do trabalho escrito
 
-```bash
-cd backend
-.venv/Scripts/python.exe -m scripts.exportar_docs
+Tudo o que o relatório precisa está em `docs/`, e a maior parte é gerada a partir do próprio código — o que evita que o documento envelheça em relação ao sistema.
+
+| Arquivo | O que é | Como se gera |
+|---|---|---|
+| `MAPA_DE_DESENVOLVIMENTO.md` | decisões de arquitetura com o motivo de cada uma, problemas encontrados (sintoma, causa e correção) e como cada entrega foi verificada | escrito à mão, durante o desenvolvimento |
+| `TRECHOS_DE_CODIGO.md` | os trechos de código escolhidos para o relatório impresso, com a contagem de linhas | `python -m scripts.exportar_trechos` |
+| `DIAGRAMAS.md` | os cinco diagramas do sistema, em Mermaid | escrito à mão; as imagens saem de <https://mermaid.live> |
+| `TELAS.md` | as sete capturas de tela, com legenda sugerida para cada figura | capturas do sistema rodando |
+| `openapi.json` e `manifesto.wsdl` | os contratos dos dois web services | `python -m scripts.exportar_docs` |
+| `imagens/` | os cinco diagramas e as sete telas, em arquivo | — |
+
+Os dois scripts rodam a partir da pasta `backend` e não precisam do servidor no ar.
+
+### Os trechos de código no relatório
+
+O relatório de código tem limite de 10 páginas em Arial 12 com espaçamento 1,5 — cerca de 380 linhas. Como o projeto é maior que isso, os trechos que vão para o papel ficam marcados no próprio código-fonte:
+
+```python
+# APS-TRECHO 3: Erros no formato RFC 7807
+...
+# APS-FIM
 ```
 
-Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, sem precisar do servidor no ar.
+`scripts/exportar_trechos.py` recolhe essas marcas e monta `docs/TRECHOS_DE_CODIGO.md`, avisando se a soma passar do limite. São **seis trechos, 299 linhas**: as rotas REST, a máquina de estados, o tratamento de erro RFC 7807, o serviço SOAP escrito à mão, o cliente `zeep` e a integração externa com cache.
 
-`docs/MAPA_DE_DESENVOLVIMENTO.md` registra as decisões de arquitetura com o motivo de cada uma, os problemas e defeitos encontrados no caminho (com sintoma, causa e correção) e como cada entrega foi verificada. É o complemento do trabalho escrito: o README descreve o sistema pronto, o mapa descreve como se chegou nele.
+A escolha privilegia os dois web services, que são o tema do trabalho. O front-end aparece pelas capturas de tela, não por código.
 
 ## Situação do desenvolvimento
 
@@ -252,6 +274,8 @@ Gera `docs/openapi.json` e `docs/manifesto.wsdl` a partir do próprio código, s
 | F3 | IBGE e ViaCEP com cache em memória e queda tratada | concluída |
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | concluída |
 | F5 | Front-end em React: login, painel, manifestos, relatórios e cadastros | concluída |
-| F6 | README final, diagramas e prints em `docs/` | a fazer |
+| F6 | Acabamento: diagramas, capturas de tela e trechos de código para o relatório | concluída |
+
+O desenvolvimento está concluído. O que resta é o trabalho escrito, que não depende do código: a proposta para o coordenador, o capítulo sobre fundamentos de web services, a dissertação sobre formação e interdisciplinaridade, a bibliografia e a ficha da APS.
 
 O serviço SOAP e o cliente `zeep` já estão funcionando desde a F1, por serem o ponto de maior risco técnico do projeto.
