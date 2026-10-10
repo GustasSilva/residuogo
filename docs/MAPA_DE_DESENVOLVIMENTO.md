@@ -21,7 +21,7 @@ depuração e não apenas como anedota.
 | F3 | Integrações IBGE e ViaCEP, cache em memória, tratamento de indisponibilidade | `6f99b98` | concluída |
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | `54d0881` | concluída |
 | F5 | Front-end em React: login, painel, manifestos, emissão, detalhe com ações por papel, QR, relatórios e cadastros | `939d5a7` | concluída |
-| F6 | Acabamento: diagramas, capturas de tela e extração dos trechos de código para o relatório | (este commit) | concluída |
+| F6 | Acabamento: diagramas, capturas de tela e extração dos trechos de código para o relatório | `b7f5618` | concluída |
 
 Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes; F5, 184 testes.
 
