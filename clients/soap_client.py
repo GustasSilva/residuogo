@@ -12,7 +12,7 @@ SOAP e REST: o contrato SOAP e legivel por maquina.
 Uso, com o servidor rodando:
 
     python clients/soap_client.py                       # consulta de exemplo
-    python clients/soap_client.py RGO-2026-000001 11222333000181
+    python clients/soap_client.py RGO-2026-000003 11222333000181
     python clients/soap_client.py --url http://outro-host:8000/soap/manifesto
 
 Para observar o tratamento de erro (SOAP Fault), basta informar um numero de
@@ -75,7 +75,7 @@ def consultar(url_wsdl: str, numero: str, cnpj: str) -> int:
 
 def main() -> int:
     leitor = argparse.ArgumentParser(description="Consulta um manifesto pelo serviço SOAP.")
-    leitor.add_argument("numero", nargs="?", default="RGO-2026-000001", help="Número do manifesto.")
+    leitor.add_argument("numero", nargs="?", default="RGO-2026-000003", help="Número do manifesto.")
     leitor.add_argument(
         "cnpj",
         nargs="?",

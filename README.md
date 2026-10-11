@@ -103,7 +103,7 @@ Todas as transições passam por uma única função, `_aplicar_transicao`, que 
 Com o servidor rodando, em outro terminal:
 
 ```bash
-backend/.venv/Scripts/python.exe clients/soap_client.py RGO-2026-000001 11222333000181
+backend/.venv/Scripts/python.exe clients/soap_client.py RGO-2026-000003 11222333000181
 ```
 
 O cliente usa `zeep`: ele lê o WSDL e monta a chamada sozinho, sem nenhum XML escrito no código. Informar um número inexistente ou um CNPJ que não participa do manifesto demonstra o tratamento de erro por SOAP Fault.
