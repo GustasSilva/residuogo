@@ -35,6 +35,14 @@ def nova_organizacao(**ajustes) -> dict:
     return corpo
 
 
+def alteracao(**ajustes) -> dict:
+    """Monta o corpo de uma alteracao valida: o cadastro inteiro, sem CNPJ e papel."""
+    corpo = nova_organizacao(ativo=True)
+    del corpo["cnpj"], corpo["papel"]
+    corpo.update(ajustes)
+    return corpo
+
+
 class TestCadastro:
     def test_admin_cadastra_organizacao(self, cliente: TestClient, dados: dict) -> None:
         cabecalho = autenticar(cliente, "admin@teste.com.br")
@@ -83,6 +91,109 @@ class TestCadastro:
 
         corpo = conferir_formato_do_problema(resposta, 409, "CONFLITO")
         assert dados["gerador"].razao_social in corpo["detail"]
+
+
+class TestAlteracao:
+    def test_licenca_renovada_volta_a_valer_na_emissao(
+        self, cliente: TestClient, dados: dict
+    ) -> None:
+        """O ciclo completo da licenca: vencida, a emissao e recusada (RN04);
+        renovada pelo ADMIN, a mesma emissao passa."""
+        admin = autenticar(cliente, "admin@teste.com.br")
+        gerador = autenticar(cliente, "gerador@teste.com.br")
+        vencido = dados["transportador_vencido"]
+        manifesto = {
+            "transportador_id": vencido.id,
+            "destinador_id": dados["destinador"].id,
+            "itens": [
+                {
+                    "tipo_residuo_id": dados["tipo_residuo"].id,
+                    "quantidade_declarada": 1.5,
+                    "unidade": "T",
+                    "acondicionamento": "CACAMBA",
+                }
+            ],
+        }
+
+        recusado = cliente.post("/api/v1/manifestos", headers=gerador, json=manifesto)
+        conferir_formato_do_problema(recusado, 422, "LICENCA_VENCIDA")
+
+        nova_validade = (date.today() + timedelta(days=365)).isoformat()
+        resposta = cliente.put(
+            f"/api/v1/organizacoes/{vencido.id}",
+            headers=admin,
+            json=alteracao(licenca_validade=nova_validade),
+        )
+        assert resposta.status_code == 200
+        assert resposta.json()["licenca_validade"] == nova_validade
+
+        aceito = cliente.post("/api/v1/manifestos", headers=gerador, json=manifesto)
+        assert aceito.status_code == 201
+
+    def test_organizacao_desativada_sai_da_lista_de_aptas(
+        self, cliente: TestClient, dados: dict
+    ) -> None:
+        admin = autenticar(cliente, "admin@teste.com.br")
+
+        resposta = cliente.put(
+            f"/api/v1/organizacoes/{dados['transportador'].id}",
+            headers=admin,
+            json=alteracao(ativo=False),
+        )
+        aptas = cliente.get(
+            "/api/v1/organizacoes",
+            headers=admin,
+            params={"papel": "TRANSPORTADOR", "apenas_aptas": True},
+        ).json()
+
+        assert resposta.json()["ativo"] is False
+        # A outra transportadora do cenario esta com a licenca vencida.
+        assert aptas["total"] == 0
+
+    def test_cnpj_e_papel_nao_mudam(self, cliente: TestClient, dados: dict) -> None:
+        """Enviados no corpo, os dois sao ignorados: nao fazem parte da alteracao."""
+        admin = autenticar(cliente, "admin@teste.com.br")
+        cnpj_original = dados["gerador"].cnpj
+
+        resposta = cliente.put(
+            f"/api/v1/organizacoes/{dados['gerador'].id}",
+            headers=admin,
+            json=alteracao(cnpj="22.333.444/0001-81", papel="DESTINADOR"),
+        )
+
+        assert resposta.status_code == 200
+        assert resposta.json()["cnpj"] == cnpj_original
+        assert resposta.json()["papel"] == "GERADOR"
+
+    def test_campo_invalido_e_recusado_como_no_cadastro(
+        self, cliente: TestClient, dados: dict
+    ) -> None:
+        admin = autenticar(cliente, "admin@teste.com.br")
+
+        resposta = cliente.put(
+            f"/api/v1/organizacoes/{dados['gerador'].id}",
+            headers=admin,
+            json=alteracao(cep="123"),
+        )
+
+        corpo = conferir_formato_do_problema(resposta, 422, "DADOS_INVALIDOS")
+        assert any(erro["campo"] == "cep" for erro in corpo["erros"])
+
+    def test_usuario_comum_nao_altera(self, cliente: TestClient, dados: dict) -> None:
+        cabecalho = autenticar(cliente, "gerador@teste.com.br")
+
+        resposta = cliente.put(
+            f"/api/v1/organizacoes/{dados['gerador'].id}", headers=cabecalho, json=alteracao()
+        )
+
+        conferir_formato_do_problema(resposta, 403, "PERMISSAO_NEGADA")
+
+    def test_organizacao_inexistente_devolve_404(self, cliente: TestClient, dados: dict) -> None:
+        admin = autenticar(cliente, "admin@teste.com.br")
+
+        resposta = cliente.put("/api/v1/organizacoes/9999", headers=admin, json=alteracao())
+
+        conferir_formato_do_problema(resposta, 404, "RECURSO_NAO_ENCONTRADO")
 
 
 class TestListagem:

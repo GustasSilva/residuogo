@@ -22,8 +22,17 @@ depuração e não apenas como anedota.
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | `54d0881` | concluída |
 | F5 | Front-end em React: login, painel, manifestos, emissão, detalhe com ações por papel, QR, relatórios e cadastros | `939d5a7` | concluída |
 | F6 | Acabamento: diagramas, capturas de tela e extração dos trechos de código para o relatório | `b7f5618` | concluída |
+| F7 | Alteração dos cadastros, troca de senha e consulta SOAP pela aplicação web | (este commit) | concluída |
 
-Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes; F5, 184 testes.
+Contagem de testes ao fim de cada fase: F1 e F2, 140 testes; F3, 155 testes; F4, 183 testes; F5, 184 testes; F7, 209 testes.
+
+**A F7 nasceu de uma revisão contra o enunciado.** Percorrendo os casos de uso
+ao vivo, o ciclo do manifesto fechava inteiro, mas os cadastros só sabiam
+criar: a API não tinha nenhuma rota de alteração. A licença vencida da
+Rodolimp — o exemplo da RN04 — nunca podia ser renovada, e o funcionário que
+saísse de uma empresa não podia ser desativado. Na mesma revisão, o SOAP
+aparecia só como um comando de terminal, enquanto o REST tinha a aplicação
+inteira (decisões 2.19 e 2.20).
 
 Os testes automatizados são todos do backend. O front-end foi verificado ao
 vivo, contra o servidor no ar, percorrendo o ciclo inteiro do manifesto pela
@@ -374,6 +383,61 @@ externa. O front-end não tem trecho próprio — ele aparece no relatório pela
 capturas de tela, que mostram melhor o que ele faz do que o seu código
 mostraria.
 
+### 2.19 Os cadastros mudam, mas não em tudo
+
+**Contexto.** Sem alteração, três casos de uso não tinham saída: renovar uma
+licença vencida, tirar o acesso de quem saiu da empresa e corrigir um erro de
+digitação no cadastro.
+
+**Decisão.** Uma rota `PUT` por cadastro, restrita ao ADMIN, mais
+`PUT /auth/senha` para qualquer usuário trocar a própria senha.
+
+| Cadastro | O que muda | O que não muda, e por quê |
+|---|---|---|
+| Organização | endereço, licença, situação | **CNPJ**, que identifica a empresa; **papel**, porque os manifestos em andamento dependem dele — um transportador que virasse destinador não conseguiria mais confirmar a coleta das cargas que já estão com ele (RN01) |
+| Usuário | nome, situação, senha (para quem a esqueceu) | **e-mail, perfil e organização**: o vínculo diz em nome de quem o usuário agiu em cada movimentação do histórico; trocá-lo reescreveria esse passado |
+| Tipo de resíduo | descrição, classe, unidade | **código**, que identifica o resíduo na Lista Brasileira |
+
+**Por que PUT, e não PATCH.** O formulário da tela já tem o registro inteiro,
+então ele é reenviado completo. Assim cada campo continua obrigatório e
+validado exatamente como no cadastro, sem um segundo schema com todos os campos
+opcionais — e sem o caso de um campo obrigatório chegar como `null`.
+
+**Três regras que vieram junto:**
+
+* desativar uma organização não interrompe os manifestos em andamento — a
+  carga que já está na estrada precisa chegar —, só a tira dos novos, pela
+  mesma `exigir_apta` da RN04;
+* o ADMIN não pode desativar a si mesmo: se fosse o único, ninguém mais
+  conseguiria reativá-lo;
+* a senha atual errada na troca é 422, e não 401: o usuário está autenticado,
+  quem está errado é um campo. Um 401 faria o front-end encerrar a sessão.
+
+**Consequência.** Desativar um usuário tem efeito imediato, sem nenhum código
+novo para isso: a autenticação já conferia a situação a cada requisição, então
+o token que ele tinha deixa de valer na requisição seguinte.
+
+### 2.20 A aplicação web consome os dois web services
+
+**Contexto.** O enunciado pede "uma aplicação que os consuma". O REST era
+consumido pela aplicação inteira; o SOAP, só pelo cliente `zeep`, no terminal.
+
+**Decisão.** A tela **Consulta SOAP** faz pelo navegador a mesma consulta do
+cliente `zeep` e mostra o envelope enviado e o recebido. O detalhe de cada
+manifesto tem um atalho para ela, com o número preenchido.
+
+**Sem biblioteca, de propósito.** O envelope é montado como texto em
+`api/soap.ts` — com os caracteres especiais do que foi digitado escapados — e a
+resposta é lida com o `DOMParser` do navegador. É o mesmo raciocínio do
+serviço escrito à mão no backend (decisão 2.1): cada parte da mensagem fica à
+vista, e pode ser explicada.
+
+**O detalhe que importa.** Um SOAP Fault chega com HTTP 500, como manda o SOAP
+1.1, e ainda assim é uma resposta válida. Por isso o cliente não decide nada
+pelo status HTTP: decide pelo conteúdo do envelope. Dois testes garantem que o
+servidor autoriza o navegador (CORS) tanto na pergunta prévia quanto na
+resposta com Fault.
+
 ---
 
 ## 3. Problemas e defeitos encontrados
@@ -634,6 +698,20 @@ desenho para o texto que acompanha o diagrama. A conferência foi feita lendo
 de volta os rótulos renderizados na página, e não a olho: o corte é discreto o
 bastante para passar despercebido em uma figura.
 
+### 3.19 O botão "Sair" não usava a fonte da aplicação
+
+**Sintoma.** Ao lado do novo link "Trocar senha", o botão "Sair" aparecia
+menor e em outra fonte.
+
+**Causa.** Elementos `<button>` não herdam a fonte da página: o navegador
+aplica a dele (Arial, 13,3 px). O estilo `.botao` já corrigia isso com
+`font: inherit`; o `.botao-texto`, usado sozinho, não. O defeito existia desde
+a F5 e só ficou visível quando um link, que herda a fonte, passou a ficar ao
+lado dele.
+
+**Correção.** `font: inherit` e o mesmo tamanho de `.botao` no `.botao-texto`.
+Conferido medindo o estilo calculado dos dois elementos no navegador.
+
 ---
 
 ## 4. Pontos que o escopo deixou abertos, e como foram fechados
@@ -681,6 +759,8 @@ atende ao que se espera dele; a verificação confronta o sistema com o mundo.
 | Front-end, QR code | o endereço `/qr/<token>` da etiqueta abriu o manifesto correspondente |
 | Diagramas | cada figura foi exportada do arquivo-fonte e conferida lendo de volta os rótulos renderizados, e não só olhando a imagem (ver problema 3.18) |
 | Trechos do relatório | extraídos do código por script, com a contagem de linhas conferida contra o limite de páginas: 299 de cerca de 380 |
+| Casos de uso, contra o enunciado (F7) | 51 verificações de ponta a ponta contra o servidor no ar, com os usuários de demonstração: o ciclo do manifesto e os fluxos alternativos, as recusas esperadas, documentos, integrações reais e o SOAP pelo `zeep` — e, depois da F7, a licença da Rodolimp renovada e a emissão com ela aceita |
+| Front-end da F7 | percorrido no navegador: licença renovada pelo formulário de alteração (a organização passou de "Licença vencida" a "Apta"), usuário desativado (o login dele passou a ser recusado), a situação travada para o próprio ADMIN, a troca de senha com a atual errada e certa, e a Consulta SOAP com resposta e com Fault |
 
 Números que o seed produz, medidos no painel: **78,2% de desvio de aterro** na
 janela de seis meses (205.280 kg recuperados de 262.518 kg destinados) e **14 de

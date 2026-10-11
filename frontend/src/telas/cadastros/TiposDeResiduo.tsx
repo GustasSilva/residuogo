@@ -7,12 +7,15 @@
  * interpretar texto digitado por quem emitiu o manifesto.
  *
  * O catálogo é pequeno e não tem filtro: a listagem traz tudo de uma vez.
+ *
+ * O mesmo formulário serve ao cadastro e à correção. Na correção o código fica
+ * travado: é ele que identifica o resíduo na Lista Brasileira.
  */
 
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { api } from "../../api/api";
-import type { ClasseResiduo, TipoResiduoNovo, UnidadeMedida } from "../../api/tipos";
+import type { ClasseResiduo, TipoResiduo, TipoResiduoNovo, UnidadeMedida } from "../../api/tipos";
 import { Campo } from "../../componentes/Campo";
 import { AvisoDeErro, Carregando, Vazio } from "../../componentes/Pagina";
 import { CLASSE, UNIDADE } from "../../rotulos";
@@ -30,7 +33,9 @@ const VAZIO: TipoResiduoNovo = {
 };
 
 export function TiposDeResiduo() {
-  const [cadastrando, setCadastrando] = useState(false);
+  // O formulário pode estar fechado (null), cadastrando um tipo novo ("novo")
+  // ou corrigindo um existente (o próprio tipo).
+  const [formulario, setFormulario] = useState<TipoResiduo | "novo" | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
   const lista = useCarregamento(() => api.tiposDeResiduo(), "");
 
@@ -41,21 +46,25 @@ export function TiposDeResiduo() {
           type="button"
           className="botao botao-principal"
           onClick={() => {
-            setCadastrando((atual) => !atual);
+            setFormulario(formulario === null ? "novo" : null);
             setRecado(null);
           }}
         >
-          {cadastrando ? "Fechar formulário" : "Novo tipo de resíduo"}
+          {formulario === null ? "Novo tipo de resíduo" : "Fechar formulário"}
         </button>
       </div>
 
       {recado !== null && <div className="aviso aviso-sucesso">{recado}</div>}
 
-      {cadastrando && (
+      {formulario !== null && (
         <Formulario
-          aoCadastrar={(codigo) => {
-            setCadastrando(false);
-            setRecado(`O tipo ${codigo} foi cadastrado.`);
+          // A chave recria o formulário ao trocar de tipo, para que ele não
+          // carregue os dados do anterior.
+          key={formulario === "novo" ? "novo" : formulario.id}
+          original={formulario === "novo" ? null : formulario}
+          aoSalvar={(mensagem) => {
+            setFormulario(null);
+            setRecado(mensagem);
             lista.recarregar();
           }}
         />
@@ -87,6 +96,7 @@ export function TiposDeResiduo() {
                   <th>Descrição</th>
                   <th>Classe</th>
                   <th>Unidade padrão</th>
+                  <th aria-label="Ações" />
                 </tr>
               </thead>
               <tbody>
@@ -96,6 +106,20 @@ export function TiposDeResiduo() {
                     <td>{tipo.descricao}</td>
                     <td>{CLASSE[tipo.classe]}</td>
                     <td>{UNIDADE[tipo.unidade_padrao]}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="botao-texto"
+                        onClick={() => {
+                          setFormulario(tipo);
+                          setRecado(null);
+                          // O formulário fica no topo da página, acima da lista.
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                      >
+                        Corrigir
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -107,29 +131,64 @@ export function TiposDeResiduo() {
   );
 }
 
-function Formulario({ aoCadastrar }: { aoCadastrar: (codigo: string) => void }) {
-  const [dados, setDados] = useState<TipoResiduoNovo>(VAZIO);
+/**
+ * Cadastro (sem `original`) ou correção (com o tipo a corrigir).
+ */
+function Formulario({
+  original,
+  aoSalvar,
+}: {
+  original: TipoResiduo | null;
+  aoSalvar: (mensagem: string) => void;
+}) {
+  const corrigindo = original !== null;
+  const [dados, setDados] = useState<TipoResiduoNovo>(
+    original === null
+      ? VAZIO
+      : {
+          codigo: original.codigo,
+          descricao: original.descricao,
+          classe: original.classe,
+          unidade_padrao: original.unidade_padrao,
+        },
+  );
   const envio = useAcao();
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault();
     const certo = await envio.executar(async () => {
-      await api.criarTipoDeResiduo(dados);
+      if (original === null) {
+        await api.criarTipoDeResiduo(dados);
+      } else {
+        await api.corrigirTipoDeResiduo(original.id, {
+          descricao: dados.descricao,
+          classe: dados.classe,
+          unidade_padrao: dados.unidade_padrao,
+        });
+      }
     });
-    if (certo) aoCadastrar(dados.codigo);
+    if (certo) {
+      aoSalvar(`O tipo ${dados.codigo} foi ${corrigindo ? "corrigido" : "cadastrado"}.`);
+    }
   }
+
+  const rotuloDoBotao = corrigindo ? "Salvar correção" : "Cadastrar tipo";
 
   return (
     <section className="cartao">
       <header>
-        <h2>Novo tipo de resíduo</h2>
+        <h2>{corrigindo ? "Corrigir tipo de resíduo" : "Novo tipo de resíduo"}</h2>
       </header>
       <div className="cartao-corpo">
         <form className="pilha" onSubmit={enviar}>
           <div className="grade duas">
             <Campo
               rotulo="Código"
-              ajuda="Código da Lista Brasileira de Resíduos."
+              ajuda={
+                corrigindo
+                  ? "O código identifica o resíduo e não muda."
+                  : "Código da Lista Brasileira de Resíduos."
+              }
               erro={envio.erro?.doCampo("codigo")}
             >
               <input
@@ -138,6 +197,7 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (codigo: string) => void }) 
                   setDados((atuais) => ({ ...atuais, codigo: evento.target.value }))
                 }
                 maxLength={20}
+                disabled={corrigindo}
                 required
               />
             </Campo>
@@ -157,6 +217,11 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (codigo: string) => void }) 
           <div className="grade duas">
             <Campo
               rotulo="Classe (NBR 10004)"
+              ajuda={
+                corrigindo
+                  ? "A classe corrigida vale também nos relatórios de meses anteriores."
+                  : undefined
+              }
               erro={envio.erro?.doCampo("classe")}
             >
               <select
@@ -200,7 +265,7 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (codigo: string) => void }) 
 
           <div className="rodape-do-formulario">
             <button type="submit" className="botao botao-principal" disabled={envio.executando}>
-              {envio.executando ? "Cadastrando…" : "Cadastrar tipo"}
+              {envio.executando ? "Salvando…" : rotuloDoBotao}
             </button>
           </div>
         </form>

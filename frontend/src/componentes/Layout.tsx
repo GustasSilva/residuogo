@@ -17,10 +17,12 @@ import { PAPEL } from "../rotulos";
 import { useSessao } from "../sessao";
 import type { UsuarioLogado } from "../api/tipos";
 
+const GRUPOS = ["Operação", "Gestão", "Integração"] as const;
+
 interface ItemDeMenu {
   endereco: string;
   texto: string;
-  grupo: "Operação" | "Gestão";
+  grupo: (typeof GRUPOS)[number];
   /** Quem vê o item. Sem esta função, o item aparece para todos. */
   visivel?: (usuario: UsuarioLogado) => boolean;
   /** Em quais endereços o item deve aparecer como o atual. */
@@ -64,6 +66,12 @@ const MENU: ItemDeMenu[] = [
     visivel: (usuario) => usuario.perfil === "ADMIN",
     atual: (caminho) => caminho.startsWith("/cadastros"),
   },
+  {
+    endereco: "/soap",
+    texto: "Consulta SOAP",
+    grupo: "Integração",
+    atual: (caminho) => caminho === "/soap",
+  },
 ];
 
 export function Layout() {
@@ -75,7 +83,6 @@ export function Layout() {
   if (usuario === null) return null;
 
   const itens = MENU.filter((item) => item.visivel === undefined || item.visivel(usuario));
-  const grupos = ["Operação", "Gestão"] as const;
 
   return (
     <div className="aplicacao">
@@ -88,7 +95,7 @@ export function Layout() {
         </div>
 
         <nav className="navegacao">
-          {grupos.map((grupo) => (
+          {GRUPOS.map((grupo) => (
             <div key={grupo}>
               <div className="navegacao-grupo">{grupo}</div>
               {itens
@@ -113,9 +120,14 @@ export function Layout() {
               ? "Acesso a todas as organizações"
               : `${usuario.organizacao.razao_social} · ${PAPEL[usuario.organizacao.papel]}`}
           </div>
-          <button type="button" className="botao-texto" onClick={sair}>
-            Sair
-          </button>
+          <div className="usuario-atual-acoes">
+            <Link to="/senha" className="botao-texto">
+              Trocar senha
+            </Link>
+            <button type="button" className="botao-texto" onClick={sair}>
+              Sair
+            </button>
+          </div>
         </div>
       </aside>
 

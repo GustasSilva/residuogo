@@ -226,13 +226,26 @@ function Indicador({
  * O alerta importa porque é a licença que autoriza o participante a operar: sem
  * licença válida, a regra RN04 recusa a emissão de novos manifestos. Quem vê
  * este aviso tem trinta dias para renovar antes de ficar impedido.
+ *
+ * O administrador recebe o atalho para o cadastro, onde a validade nova é
+ * registrada e a organização volta a ser aceita na emissão.
  */
 function Licencas({ licencas }: { licencas: Indicadores["licencas_a_vencer"] }) {
+  const { usuario } = useSessao();
+
   return (
     <section className="cartao">
       <header>
         <h2>Licenças ambientais</h2>
-        <span className="miudo">vencidas ou a vencer em 30 dias</span>
+        <span className="miudo">
+          vencidas ou a vencer em 30 dias
+          {usuario?.perfil === "ADMIN" && licencas.length > 0 && (
+            <>
+              {" · "}
+              <Link to="/cadastros/organizacoes">renovar no cadastro</Link>
+            </>
+          )}
+        </span>
       </header>
 
       {licencas.length === 0 ? (

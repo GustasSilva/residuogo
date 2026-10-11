@@ -75,6 +75,46 @@
         ]
       }
     },
+    "/api/v1/auth/senha": {
+      "put": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Troca a senha do usuário autenticado",
+        "description": "Exige a senha atual; o token em uso continua valendo depois da troca.",
+        "operationId": "trocar_senha_api_v1_auth_senha_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrocaDeSenhaEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/organizacoes": {
       "post": {
         "tags": [
@@ -279,6 +319,62 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": [
+          "Organizações"
+        ],
+        "summary": "Altera os dados de uma organização (ADMIN)",
+        "description": "Substitui endereço, licença ambiental e situação da organização.\n\nCNPJ e papel não mudam (ver o schema `OrganizacaoAtualizar`). Renovar a\nlicença por aqui devolve a organização à lista de aptas da emissão (RN04).",
+        "operationId": "atualizar_api_v1_organizacoes__organizacao_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "organizacao_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Organizacao Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizacaoAtualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizacaoSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/usuarios": {
@@ -408,6 +504,64 @@
         }
       }
     },
+    "/api/v1/usuarios/{usuario_id}": {
+      "put": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Altera um usuário (ADMIN)",
+        "description": "Altera nome e situação; com `nova_senha`, redefine a senha de quem a esqueceu.\n\nDesativar o usuário bloqueia o login e invalida o token que ele já tinha.",
+        "operationId": "atualizar_api_v1_usuarios__usuario_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsuarioAtualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsuarioSaida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tipos-residuo": {
       "post": {
         "tags": [
@@ -500,6 +654,64 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Pagina_TipoResiduoSaida_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tipos-residuo/{tipo_id}": {
+      "put": {
+        "tags": [
+          "Tipos de resíduo"
+        ],
+        "summary": "Corrige um tipo de resíduo (ADMIN)",
+        "description": "Corrige descrição, classe ou unidade padrão de um tipo do catálogo.\n\nOs relatórios agrupam pela classe atual do tipo, então uma classe\ncorrigida vale também para períodos passados — que é o desejado quando a\nalteração conserta um erro de cadastro.",
+        "operationId": "atualizar_api_v1_tipos_residuo__tipo_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tipo_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Tipo Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TipoResiduoAtualizar"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TipoResiduoSaida"
                 }
               }
             }
@@ -2599,7 +2811,7 @@
         "title": "MunicipioSaida",
         "description": "Municipio como a tela de cadastro o consome."
       },
-      "OrganizacaoCriar": {
+      "OrganizacaoAtualizar": {
         "properties": {
           "razao_social": {
             "type": "string",
@@ -2607,9 +2819,83 @@
             "minLength": 3,
             "title": "Razao Social"
           },
-          "papel": {
-            "$ref": "#/components/schemas/PapelOrganizacao",
-            "description": "Posicao no ciclo do residuo."
+          "cep": {
+            "type": "string",
+            "title": "Cep",
+            "description": "Com ou sem mascara; e guardado so com digitos."
+          },
+          "logradouro": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Logradouro"
+          },
+          "numero": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Numero"
+          },
+          "bairro": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Bairro"
+          },
+          "municipio_ibge_codigo": {
+            "type": "string",
+            "maxLength": 7,
+            "minLength": 7,
+            "title": "Municipio Ibge Codigo",
+            "description": "Codigo IBGE do municipio (7 digitos)."
+          },
+          "municipio_nome": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 2,
+            "title": "Municipio Nome"
+          },
+          "licenca_numero": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Licenca Numero"
+          },
+          "licenca_validade": {
+            "type": "string",
+            "format": "date",
+            "title": "Licenca Validade",
+            "description": "Data de vencimento da licenca ambiental."
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo",
+            "description": "Inativa, a organizacao nao entra em manifestos novos."
+          }
+        },
+        "type": "object",
+        "required": [
+          "razao_social",
+          "cep",
+          "logradouro",
+          "numero",
+          "bairro",
+          "municipio_ibge_codigo",
+          "municipio_nome",
+          "licenca_numero",
+          "licenca_validade",
+          "ativo"
+        ],
+        "title": "OrganizacaoAtualizar",
+        "description": "Alteracao dos dados de uma organizacao, feita pelo ADMIN.\n\nO cadastro e reenviado inteiro (PUT), e nao so os campos que mudaram:\nassim cada campo continua obrigatorio e validado como no cadastro.\n\nDuas informacoes ficam de fora de proposito:\n\n* o CNPJ, que identifica a empresa - CNPJ diferente e outra organizacao;\n* o papel, porque os manifestos em andamento dependem dele: um\n  transportador que virasse destinador nao conseguiria mais confirmar a\n  coleta das cargas que ja estao com ele (regra RN01)."
+      },
+      "OrganizacaoCriar": {
+        "properties": {
+          "razao_social": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Razao Social"
           },
           "cep": {
             "type": "string",
@@ -2663,12 +2949,15 @@
             "type": "string",
             "title": "Cnpj",
             "description": "Com ou sem mascara; os digitos verificadores sao conferidos."
+          },
+          "papel": {
+            "$ref": "#/components/schemas/PapelOrganizacao",
+            "description": "Posicao no ciclo do residuo."
           }
         },
         "type": "object",
         "required": [
           "razao_social",
-          "papel",
           "cep",
           "logradouro",
           "numero",
@@ -2677,7 +2966,8 @@
           "municipio_nome",
           "licenca_numero",
           "licenca_validade",
-          "cnpj"
+          "cnpj",
+          "papel"
         ],
         "title": "OrganizacaoCriar"
       },
@@ -2721,10 +3011,6 @@
             "maxLength": 120,
             "minLength": 3,
             "title": "Razao Social"
-          },
-          "papel": {
-            "$ref": "#/components/schemas/PapelOrganizacao",
-            "description": "Posicao no ciclo do residuo."
           },
           "cep": {
             "type": "string",
@@ -2782,6 +3068,9 @@
             "type": "string",
             "title": "Cnpj"
           },
+          "papel": {
+            "$ref": "#/components/schemas/PapelOrganizacao"
+          },
           "ativo": {
             "type": "boolean",
             "title": "Ativo"
@@ -2795,7 +3084,6 @@
         "type": "object",
         "required": [
           "razao_social",
-          "papel",
           "cep",
           "logradouro",
           "numero",
@@ -2806,6 +3094,7 @@
           "licenca_validade",
           "id",
           "cnpj",
+          "papel",
           "ativo",
           "criado_em"
         ],
@@ -3181,15 +3470,8 @@
         "title": "TipoDestinacao",
         "description": "Tratamento final aplicado ao residuo.\n\nO agrupamento usado no indicador ambiental esta em\n`DESTINACOES_RECUPERACAO` e `DESTINACOES_DISPOSICAO`, no fim do modulo."
       },
-      "TipoResiduoCriar": {
+      "TipoResiduoAtualizar": {
         "properties": {
-          "codigo": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 1,
-            "title": "Codigo",
-            "description": "Codigo da Lista Brasileira de Residuos."
-          },
           "descricao": {
             "type": "string",
             "maxLength": 160,
@@ -3206,22 +3488,15 @@
         },
         "type": "object",
         "required": [
-          "codigo",
           "descricao",
           "classe",
           "unidade_padrao"
         ],
-        "title": "TipoResiduoCriar"
+        "title": "TipoResiduoAtualizar",
+        "description": "Correcao de um tipo do catalogo, feita pelo ADMIN.\n\nO codigo fica de fora: e ele que identifica o residuo na Lista Brasileira."
       },
-      "TipoResiduoSaida": {
+      "TipoResiduoCriar": {
         "properties": {
-          "codigo": {
-            "type": "string",
-            "maxLength": 20,
-            "minLength": 1,
-            "title": "Codigo",
-            "description": "Codigo da Lista Brasileira de Residuos."
-          },
           "descricao": {
             "type": "string",
             "maxLength": 160,
@@ -3234,6 +3509,45 @@
           },
           "unidade_padrao": {
             "$ref": "#/components/schemas/UnidadeMedida"
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Codigo",
+            "description": "Codigo da Lista Brasileira de Residuos."
+          }
+        },
+        "type": "object",
+        "required": [
+          "descricao",
+          "classe",
+          "unidade_padrao",
+          "codigo"
+        ],
+        "title": "TipoResiduoCriar"
+      },
+      "TipoResiduoSaida": {
+        "properties": {
+          "descricao": {
+            "type": "string",
+            "maxLength": 160,
+            "minLength": 3,
+            "title": "Descricao"
+          },
+          "classe": {
+            "$ref": "#/components/schemas/ClasseResiduo",
+            "description": "Classificacao da NBR 10004."
+          },
+          "unidade_padrao": {
+            "$ref": "#/components/schemas/UnidadeMedida"
+          },
+          "codigo": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Codigo",
+            "description": "Codigo da Lista Brasileira de Residuos."
           },
           "id": {
             "type": "integer",
@@ -3242,10 +3556,10 @@
         },
         "type": "object",
         "required": [
-          "codigo",
           "descricao",
           "classe",
           "unidade_padrao",
+          "codigo",
           "id"
         ],
         "title": "TipoResiduoSaida"
@@ -3274,6 +3588,29 @@
         "title": "TokenSaida",
         "description": "Resposta do login.\n\n`tipo` segue o padrao HTTP Bearer: o cliente deve enviar o token no\ncabecalho `Authorization: Bearer <token>`."
       },
+      "TrocaDeSenhaEntrada": {
+        "properties": {
+          "senha_atual": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Senha Atual"
+          },
+          "nova_senha": {
+            "type": "string",
+            "maxLength": 72,
+            "minLength": 8,
+            "title": "Nova Senha",
+            "description": "Minimo de 8 caracteres."
+          }
+        },
+        "type": "object",
+        "required": [
+          "senha_atual",
+          "nova_senha"
+        ],
+        "title": "TrocaDeSenhaEntrada",
+        "description": "Troca da propria senha, feita pelo usuario autenticado."
+      },
       "UnidadeMedida": {
         "type": "string",
         "enum": [
@@ -3284,6 +3621,42 @@
         ],
         "title": "UnidadeMedida",
         "description": "Unidade em que a quantidade do residuo e declarada.\n\nKG e T sao unidades de massa; L e M3, de volume. Os relatorios somam massa\ne volume separadamente, pois converter volume em massa exigiria conhecer a\ndensidade de cada residuo."
+      },
+      "UsuarioAtualizar": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 3,
+            "title": "Nome"
+          },
+          "ativo": {
+            "type": "boolean",
+            "title": "Ativo",
+            "description": "Inativo, o usuario nao entra e o token dele deixa de valer."
+          },
+          "nova_senha": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 72,
+                "minLength": 8
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nova Senha",
+            "description": "Opcional. Informada, substitui a senha (para quem a esqueceu)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "ativo"
+        ],
+        "title": "UsuarioAtualizar",
+        "description": "Alteracao de um usuario, feita pelo ADMIN.\n\nE-mail, perfil e organizacao nao mudam. O vinculo com a organizacao e o\nque decide em nome de quem o usuario agiu em cada movimentacao do\nhistorico; troca-lo reescreveria esse passado. Quem muda de empresa\nrecebe um cadastro novo."
       },
       "UsuarioCriar": {
         "properties": {

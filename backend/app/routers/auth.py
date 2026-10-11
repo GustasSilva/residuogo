@@ -1,4 +1,4 @@
-"""Rotas de autenticacao: login e identificacao do usuario logado."""
+"""Rotas de autenticacao: login, usuario logado e troca da propria senha."""
 
 from fastapi import APIRouter, status
 from sqlalchemy import select
@@ -7,8 +7,9 @@ from app.config import config
 from app.dependencies import Sessao, UsuarioAtual
 from app.errors import NaoAutenticado
 from app.models import Usuario
-from app.schemas import LoginEntrada, TokenSaida, UsuarioLogadoSaida
+from app.schemas import LoginEntrada, TokenSaida, TrocaDeSenhaEntrada, UsuarioLogadoSaida
 from app.security import criar_token, senha_confere
+from app.services import usuarios as servico_usuarios
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -54,3 +55,13 @@ def usuario_logado(usuario: UsuarioAtual) -> Usuario:
     da organizacao, que determina quais acoes aparecem em cada manifesto.
     """
     return usuario
+
+
+@router.put(
+    "/senha",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Troca a senha do usuário autenticado",
+)
+def trocar_senha(dados: TrocaDeSenhaEntrada, sessao: Sessao, usuario: UsuarioAtual) -> None:
+    """Exige a senha atual; o token em uso continua valendo depois da troca."""
+    servico_usuarios.trocar_senha(sessao, usuario, dados)

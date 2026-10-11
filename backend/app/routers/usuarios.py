@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.dependencies import PaginaParams, Sessao, UsuarioAdmin
 from app.models import Usuario
 from app.paginacao import paginar
-from app.schemas import Pagina, UsuarioCriar, UsuarioSaida
+from app.schemas import Pagina, UsuarioAtualizar, UsuarioCriar, UsuarioSaida
 from app.services import usuarios as servico
 
 router = APIRouter(prefix="/usuarios", tags=["Usuários"])
@@ -46,3 +46,18 @@ def listar(
     if organizacao_id is not None:
         consulta = consulta.where(Usuario.organizacao_id == organizacao_id)
     return paginar(sessao, consulta.order_by(Usuario.nome), paginacao)
+
+
+@router.put(
+    "/{usuario_id}",
+    response_model=UsuarioSaida,
+    summary="Altera um usuário (ADMIN)",
+)
+def atualizar(
+    usuario_id: int, dados: UsuarioAtualizar, sessao: Sessao, admin: UsuarioAdmin
+) -> Usuario:
+    """Altera nome e situação; com `nova_senha`, redefine a senha de quem a esqueceu.
+
+    Desativar o usuário bloqueia o login e invalida o token que ele já tinha.
+    """
+    return servico.atualizar(sessao, admin, usuario_id, dados)

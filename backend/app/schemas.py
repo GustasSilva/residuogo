@@ -8,6 +8,8 @@ e guardar apenas os digitos.
 Convencao de nomes usada no projeto:
 
 * `...Criar`  - dados que o cliente envia para criar um registro;
+* `...Atualizar` - dados que o cliente envia para alterar um registro;
+* `...Entrada` - dados de uma acao que nao e cadastro (coleta, troca de senha);
 * `...Saida`  - dados que a API devolve;
 * `...Resumo` - versao reduzida, usada quando o registro aparece aninhado
                 dentro de outro (evita respostas gigantes e repetidas).
@@ -88,8 +90,9 @@ class TokenSaida(BaseModel):
 
 
 class OrganizacaoBase(BaseModel):
+    """Dados cadastrais que podem mudar ao longo da vida da organizacao."""
+
     razao_social: str = Field(min_length=3, max_length=120)
-    papel: PapelOrganizacao = Field(description="Posicao no ciclo do residuo.")
     cep: str = Field(description="Com ou sem mascara; e guardado so com digitos.")
     logradouro: str = Field(min_length=3, max_length=160)
     numero: str = Field(min_length=1, max_length=20)
@@ -114,11 +117,29 @@ class OrganizacaoBase(BaseModel):
 
 class OrganizacaoCriar(OrganizacaoBase):
     cnpj: str = Field(description="Com ou sem mascara; os digitos verificadores sao conferidos.")
+    papel: PapelOrganizacao = Field(description="Posicao no ciclo do residuo.")
 
     @field_validator("cnpj")
     @classmethod
     def _validar_cnpj(cls, valor: str) -> str:
         return normalizar_cnpj(valor)
+
+
+class OrganizacaoAtualizar(OrganizacaoBase):
+    """Alteracao dos dados de uma organizacao, feita pelo ADMIN.
+
+    O cadastro e reenviado inteiro (PUT), e nao so os campos que mudaram:
+    assim cada campo continua obrigatorio e validado como no cadastro.
+
+    Duas informacoes ficam de fora de proposito:
+
+    * o CNPJ, que identifica a empresa - CNPJ diferente e outra organizacao;
+    * o papel, porque os manifestos em andamento dependem dele: um
+      transportador que virasse destinador nao conseguiria mais confirmar a
+      coleta das cargas que ja estao com ele (regra RN01).
+    """
+
+    ativo: bool = Field(description="Inativa, a organizacao nao entra em manifestos novos.")
 
 
 class OrganizacaoResumo(BaseModel):
@@ -138,6 +159,7 @@ class OrganizacaoSaida(OrganizacaoBase):
 
     id: int
     cnpj: str
+    papel: PapelOrganizacao
     ativo: bool
     criado_em: datetime
 
@@ -171,6 +193,32 @@ class UsuarioCriar(BaseModel):
         return self
 
 
+class UsuarioAtualizar(BaseModel):
+    """Alteracao de um usuario, feita pelo ADMIN.
+
+    E-mail, perfil e organizacao nao mudam. O vinculo com a organizacao e o
+    que decide em nome de quem o usuario agiu em cada movimentacao do
+    historico; troca-lo reescreveria esse passado. Quem muda de empresa
+    recebe um cadastro novo.
+    """
+
+    nome: str = Field(min_length=3, max_length=120)
+    ativo: bool = Field(description="Inativo, o usuario nao entra e o token dele deixa de valer.")
+    nova_senha: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=72,
+        description="Opcional. Informada, substitui a senha (para quem a esqueceu).",
+    )
+
+
+class TrocaDeSenhaEntrada(BaseModel):
+    """Troca da propria senha, feita pelo usuario autenticado."""
+
+    senha_atual: str = Field(min_length=1)
+    nova_senha: str = Field(min_length=8, max_length=72, description="Minimo de 8 caracteres.")
+
+
 class UsuarioSaida(BaseModel):
     """Usuario devolvido pela API. Nunca inclui a senha nem o hash dela."""
 
@@ -199,13 +247,25 @@ class UsuarioLogadoSaida(UsuarioSaida):
 # ---------------------------------------------------------------------------
 
 
-class TipoResiduoCriar(BaseModel):
-    codigo: str = Field(
-        min_length=1, max_length=20, description="Codigo da Lista Brasileira de Residuos."
-    )
+class TipoResiduoBase(BaseModel):
+    """Dados de um tipo do catalogo que podem ser corrigidos."""
+
     descricao: str = Field(min_length=3, max_length=160)
     classe: ClasseResiduo = Field(description="Classificacao da NBR 10004.")
     unidade_padrao: UnidadeMedida
+
+
+class TipoResiduoCriar(TipoResiduoBase):
+    codigo: str = Field(
+        min_length=1, max_length=20, description="Codigo da Lista Brasileira de Residuos."
+    )
+
+
+class TipoResiduoAtualizar(TipoResiduoBase):
+    """Correcao de um tipo do catalogo, feita pelo ADMIN.
+
+    O codigo fica de fora: e ele que identifica o residuo na Lista Brasileira.
+    """
 
 
 class TipoResiduoSaida(TipoResiduoCriar):

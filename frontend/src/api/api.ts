@@ -20,6 +20,7 @@ import type {
   Municipio,
   Movimentacao,
   Organizacao,
+  OrganizacaoAlterada,
   OrganizacaoNova,
   Pagina,
   PapelOrganizacao,
@@ -27,9 +28,12 @@ import type {
   StatusManifesto,
   TipoDestinacao,
   TipoResiduo,
+  TipoResiduoCorrigido,
   TipoResiduoNovo,
   Token,
+  TrocaDeSenha,
   Usuario,
+  UsuarioAlterado,
   UsuarioLogado,
   UsuarioNovo,
   EnderecoCep,
@@ -53,6 +57,10 @@ export const api = {
 
   eu(): Promise<UsuarioLogado> {
     return pedir<UsuarioLogado>("/auth/me");
+  },
+
+  trocarMinhaSenha(dados: TrocaDeSenha): Promise<void> {
+    return pedir<void>("/auth/senha", { metodo: "PUT", corpo: dados });
   },
 
   // ------------------------------------------------------------ manifestos
@@ -186,6 +194,13 @@ export const api = {
     return pedir<Organizacao>("/organizacoes", { metodo: "POST", corpo: dados });
   },
 
+  // As alterações são PUT: o formulário reenvia o registro inteiro, e o
+  // servidor valida cada campo exatamente como no cadastro.
+
+  alterarOrganizacao(id: number, dados: OrganizacaoAlterada): Promise<Organizacao> {
+    return pedir<Organizacao>(`/organizacoes/${id}`, { metodo: "PUT", corpo: dados });
+  },
+
   listarUsuarios(parametros: { organizacao_id?: string; pagina?: number }): Promise<Pagina<Usuario>> {
     return pedir<Pagina<Usuario>>(`/usuarios${consulta({ ...parametros, tamanho: 20 })}`);
   },
@@ -194,12 +209,20 @@ export const api = {
     return pedir<Usuario>("/usuarios", { metodo: "POST", corpo: dados });
   },
 
+  alterarUsuario(id: number, dados: UsuarioAlterado): Promise<Usuario> {
+    return pedir<Usuario>(`/usuarios/${id}`, { metodo: "PUT", corpo: dados });
+  },
+
   tiposDeResiduo(): Promise<TipoResiduo[]> {
     return pedirCatalogo<TipoResiduo>("/tipos-residuo");
   },
 
   criarTipoDeResiduo(dados: TipoResiduoNovo): Promise<TipoResiduo> {
     return pedir<TipoResiduo>("/tipos-residuo", { metodo: "POST", corpo: dados });
+  },
+
+  corrigirTipoDeResiduo(id: number, dados: TipoResiduoCorrigido): Promise<TipoResiduo> {
+    return pedir<TipoResiduo>(`/tipos-residuo/${id}`, { metodo: "PUT", corpo: dados });
   },
 
   // ------------------------------------------------------------ localidades

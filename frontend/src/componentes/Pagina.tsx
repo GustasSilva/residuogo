@@ -3,8 +3,8 @@
  * e paginação.
  *
  * Nada aqui tem lógica de negócio. A razão de existirem como componentes é que
- * "carregando" e "deu erro" apareceriam escritos de sete formas diferentes nas
- * sete telas — e o erro, em especial, precisa ser exibido sempre com a mesma
+ * "carregando" e "deu erro" apareceriam escritos de uma forma diferente em
+ * cada tela — e o erro, em especial, precisa ser exibido sempre com a mesma
  * informação, inclusive o código técnico que o backend devolve.
  */
 

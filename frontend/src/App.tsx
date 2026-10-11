@@ -20,6 +20,7 @@ import { Cadastros } from "./telas/cadastros/Cadastros";
 import { Organizacoes } from "./telas/cadastros/Organizacoes";
 import { TiposDeResiduo } from "./telas/cadastros/TiposDeResiduo";
 import { Usuarios } from "./telas/cadastros/Usuarios";
+import { ConsultaSoap } from "./telas/ConsultaSoap";
 import { DetalheDoManifesto } from "./telas/DetalheDoManifesto";
 import { Entrar } from "./telas/Entrar";
 import { Manifestos } from "./telas/Manifestos";
@@ -27,6 +28,7 @@ import { NovoManifesto } from "./telas/NovoManifesto";
 import { Painel } from "./telas/Painel";
 import { Relatorios } from "./telas/Relatorios";
 import { ResolverQr } from "./telas/ResolverQr";
+import { TrocarSenha } from "./telas/TrocarSenha";
 
 export function App() {
   return (
@@ -72,6 +74,8 @@ function Rotas() {
         <Route path="/manifestos/:id" element={<DetalheDoManifesto />} />
         <Route path="/qr/:token" element={<ResolverQr />} />
         <Route path="/relatorios" element={<Relatorios />} />
+        <Route path="/soap" element={<ConsultaSoap />} />
+        <Route path="/senha" element={<TrocarSenha />} />
 
         <Route path="/cadastros" element={<Cadastros />}>
           <Route index element={<Navigate to="organizacoes" replace />} />

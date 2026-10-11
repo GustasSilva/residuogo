@@ -17,9 +17,10 @@ import type { Pagina } from "./tipos";
 /**
  * Endereço da API. Vem de variável de ambiente para que o mesmo código rode
  * apontando para outro servidor sem recompilação manual do endereço; o padrão
- * é o backend rodando na própria máquina.
+ * é o backend rodando na própria máquina. O cliente SOAP (`soap.ts`) parte
+ * deste mesmo endereço.
  */
-const BASE = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1";
+export const ENDERECO_DA_API = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api/v1";
 
 const CHAVE_DO_TOKEN = "residuogo.token";
 
@@ -103,7 +104,7 @@ export function temToken(): boolean {
 }
 
 // Avisado quando o servidor recusa o token. Quem registra é o provedor de
-// sessão (`sessao.tsx`): o cliente não conhece React nem rotas.
+// sessão (`ProvedorDeSessao.tsx`): o cliente não conhece React nem rotas.
 let aoPerderSessao: () => void = () => {};
 
 export function quandoPerderSessao(callback: () => void): void {
@@ -115,7 +116,7 @@ export function quandoPerderSessao(callback: () => void): void {
 // --------------------------------------------------------------------------
 
 interface Opcoes {
-  metodo?: "GET" | "POST";
+  metodo?: "GET" | "POST" | "PUT";
   corpo?: unknown;
 }
 
@@ -135,7 +136,7 @@ async function executar(caminho: string, opcoes: Opcoes): Promise<Response> {
 
   let resposta: Response;
   try {
-    resposta = await fetch(`${BASE}${caminho}`, {
+    resposta = await fetch(`${ENDERECO_DA_API}${caminho}`, {
       method: opcoes.metodo ?? "GET",
       headers: cabecalhos(temCorpo),
       body: temCorpo ? JSON.stringify(opcoes.corpo) : undefined,

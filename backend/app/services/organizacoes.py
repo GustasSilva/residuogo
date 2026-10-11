@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.enums import PapelOrganizacao
 from app.errors import Conflito, LicencaVencida, PapelInvalido, RecursoNaoEncontrado
 from app.models import Organizacao
-from app.schemas import OrganizacaoCriar
+from app.schemas import OrganizacaoAtualizar, OrganizacaoCriar
 
 
 def condicoes_apta(
@@ -97,6 +97,26 @@ def criar(sessao: Session, dados: OrganizacaoCriar) -> Organizacao:
 
     organizacao = Organizacao(**dados.model_dump())
     sessao.add(organizacao)
+    sessao.commit()
+    sessao.refresh(organizacao)
+    return organizacao
+
+
+def atualizar(sessao: Session, organizacao_id: int, dados: OrganizacaoAtualizar) -> Organizacao:
+    """Grava os dados novos de uma organizacao.
+
+    E por aqui que uma licenca vencida e renovada: com a validade nova, a
+    organizacao volta a ser apta e a ser oferecida na emissao (RN04).
+
+    Desativar nao interrompe os manifestos em andamento - a carga que ja esta
+    na estrada precisa chegar ao destino. A organizacao inativa apenas deixa
+    de entrar em manifestos novos, pela regra de `exigir_apta`.
+    """
+    organizacao = buscar(sessao, organizacao_id)
+
+    for campo, valor in dados.model_dump().items():
+        setattr(organizacao, campo, valor)
+
     sessao.commit()
     sessao.refresh(organizacao)
     return organizacao

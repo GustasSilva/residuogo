@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api } from "../api/api";
 import type { ItemManifesto, Manifesto, Movimentacao } from "../api/tipos";
 import { Etiqueta, Marcador } from "../componentes/Etiqueta";
@@ -59,6 +59,10 @@ export function DetalheDoManifesto() {
         >
           {impressao.executando ? "Gerando…" : "Abrir PDF"}
         </button>
+        {/* O mesmo manifesto pelo outro web service, para comparar REST e SOAP. */}
+        <Link className="botao" to={`/soap?numero=${encodeURIComponent(manifesto.numero ?? "")}`}>
+          Consultar pelo SOAP
+        </Link>
       </TituloDaPagina>
 
       {impressao.erro !== null && <AvisoDeErro erro={impressao.erro} />}

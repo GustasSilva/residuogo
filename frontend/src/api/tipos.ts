@@ -95,6 +95,12 @@ export interface OrganizacaoNova {
   licenca_validade: string;
 }
 
+/**
+ * Alteração de uma organização: o cadastro inteiro, menos CNPJ e papel, que
+ * não mudam (ver `OrganizacaoAtualizar` no backend).
+ */
+export type OrganizacaoAlterada = Omit<OrganizacaoNova, "cnpj" | "papel"> & { ativo: boolean };
+
 export interface Usuario {
   id: number;
   nome: string;
@@ -120,6 +126,18 @@ export interface UsuarioNovo {
   organizacao_id: number | null;
 }
 
+/** Alteração de um usuário. `nova_senha` nula mantém a senha atual. */
+export interface UsuarioAlterado {
+  nome: string;
+  ativo: boolean;
+  nova_senha: string | null;
+}
+
+export interface TrocaDeSenha {
+  senha_atual: string;
+  nova_senha: string;
+}
+
 export interface TipoResiduo {
   id: number;
   codigo: string;
@@ -129,6 +147,9 @@ export interface TipoResiduo {
 }
 
 export type TipoResiduoNovo = Omit<TipoResiduo, "id">;
+
+/** Correção de um tipo do catálogo: o código não muda. */
+export type TipoResiduoCorrigido = Omit<TipoResiduoNovo, "codigo">;
 
 export interface ItemManifesto {
   id: number;

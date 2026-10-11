@@ -62,7 +62,7 @@ Dados fictícios, criados pelo seed. Senha de todos os usuários comuns: `residu
 | DESTINADOR | Aterro Sanitário Central do Cerrado S.A. (Catalão) | `destinador1@residuogo.com.br` |
 | DESTINADOR | Cooperativa de Reciclagem Renascer (Itumbiara) | `destinador2@residuogo.com.br` |
 
-A transportadora **Rodolimp está com a licença ambiental vencida de propósito**: é com ela que se demonstra a regra RN04, que recusa a emissão de manifesto para participante sem licença válida.
+A transportadora **Rodolimp está com a licença ambiental vencida de propósito**: é com ela que se demonstra a regra RN04, que recusa a emissão de manifesto para participante sem licença válida — e, renovando a licença em Cadastros, que ela volta a ser aceita.
 
 ## Fluxo do manifesto
 
@@ -107,6 +107,8 @@ backend/.venv/Scripts/python.exe clients/soap_client.py RGO-2026-000001 11222333
 ```
 
 O cliente usa `zeep`: ele lê o WSDL e monta a chamada sozinho, sem nenhum XML escrito no código. Informar um número inexistente ou um CNPJ que não participa do manifesto demonstra o tratamento de erro por SOAP Fault.
+
+A aplicação web também consome o serviço: a tela **Consulta SOAP** monta o envelope, envia e mostra as duas mensagens XML trocadas. O detalhe de cada manifesto tem um atalho para ela.
 
 ## Integrações externas
 
@@ -156,9 +158,11 @@ As demais telas estão em `docs/TELAS.md`, com legenda para cada uma.
 | Detalhe | documento na tela, QR code, histórico e as ações permitidas ao usuário |
 | `/qr/:token` | destino da etiqueta impressa: resolve o token e abre o manifesto |
 | Relatórios | resumo do período por tipo, classe e destinação, com PDF |
-| Cadastros | organizações, usuários e tipos de resíduo (apenas ADMIN) |
+| Cadastros | organizações, usuários e tipos de resíduo, com cadastro e alteração (apenas ADMIN) |
+| Consulta SOAP | o status de um manifesto pelo web service SOAP, com o envelope enviado e o recebido |
+| Trocar senha | troca da própria senha, exigindo a atual |
 
-Sem biblioteca de componentes, de estado ou de gráficos: são sete telas, e cada peça — o cliente HTTP, os dois hooks de carregamento e de ação, os gráficos em CSS — cabe em poucas dezenas de linhas que podem ser lidas e explicadas inteiras. A folha de estilo é única e usa o mesmo verde dos PDFs gerados pelo backend.
+Sem biblioteca de componentes, de estado ou de gráficos: são poucas telas, e cada peça — o cliente HTTP, os dois hooks de carregamento e de ação, os gráficos em CSS — cabe em poucas dezenas de linhas que podem ser lidas e explicadas inteiras. A folha de estilo é única e usa o mesmo verde dos PDFs gerados pelo backend.
 
 Três pontos da interface vale destacar, porque são decisões e não detalhes:
 
@@ -173,7 +177,7 @@ cd backend
 .venv/Scripts/python.exe -m pytest
 ```
 
-184 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
+209 testes, cobrindo as validações de documento, o hash de senha e os tokens, as permissões por perfil, a manutenção dos cadastros (renovação de licença, desativação de usuário, troca de senha), as oito regras do manifesto (incluindo todas as transições que o diagrama recusa), o formato RFC 7807 de todas as respostas de erro, o serviço SOAP (consulta, faults e defesa contra XXE) e as integrações externas.
 
 Nenhum teste acessa a internet: o `respx` intercepta as chamadas às APIs externas e devolve a resposta que o teste determinar — é assim que dá para provocar de propósito um tempo limite, um erro 500 e a indisponibilidade total do IBGE.
 
@@ -275,6 +279,7 @@ A escolha privilegia os dois web services, que são o tema do trabalho. O front-
 | F4 | PDF do manifesto com QR code, relatórios em PDF e CSV, painel de indicadores | concluída |
 | F5 | Front-end em React: login, painel, manifestos, relatórios e cadastros | concluída |
 | F6 | Acabamento: diagramas, capturas de tela e trechos de código para o relatório | concluída |
+| F7 | Alteração dos cadastros, troca de senha e consulta SOAP pela aplicação web | concluída |
 
 O desenvolvimento está concluído. O que resta é o trabalho escrito, que não depende do código: a proposta para o coordenador, o capítulo sobre fundamentos de web services, a dissertação sobre formação e interdisciplinaridade, a bibliografia e a ficha da APS.
 

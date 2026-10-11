@@ -15,13 +15,17 @@
  * respondeu e o sistema serviu o último dado que conhecia: a tela avisa, porque
  * um endereço possivelmente desatualizado é diferente de um endereço conferido
  * agora.
+ *
+ * O mesmo formulário serve ao cadastro e à alteração. Na alteração, CNPJ e
+ * papel aparecem travados, porque o servidor não os deixa mudar, e surge o
+ * campo de situação. É pela alteração que uma licença vencida é renovada.
  */
 
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { api, PAPEIS } from "../../api/api";
 import type { FonteDoDado } from "../../api/cliente";
-import type { OrganizacaoNova, PapelOrganizacao } from "../../api/tipos";
+import type { Organizacao, OrganizacaoNova, PapelOrganizacao } from "../../api/tipos";
 import { Campo } from "../../componentes/Campo";
 import { Marcador } from "../../componentes/Etiqueta";
 import {
@@ -30,7 +34,13 @@ import {
   Paginacao,
   Vazio,
 } from "../../componentes/Pagina";
-import { cnpj as formatarCnpj, data, hoje, somenteDigitos } from "../../formatos";
+import {
+  cep as formatarCep,
+  cnpj as formatarCnpj,
+  data,
+  hoje,
+  somenteDigitos,
+} from "../../formatos";
 import { PAPEL } from "../../rotulos";
 import { useAcao } from "../../useAcao";
 import { useCarregamento } from "../../useCarregamento";
@@ -49,11 +59,30 @@ const VAZIA: OrganizacaoNova = {
   licenca_validade: "",
 };
 
+/** Os dados de uma organização já cadastrada, no formato do formulário. */
+function paraOFormulario(organizacao: Organizacao): OrganizacaoNova {
+  return {
+    razao_social: organizacao.razao_social,
+    cnpj: formatarCnpj(organizacao.cnpj),
+    papel: organizacao.papel,
+    cep: formatarCep(organizacao.cep),
+    logradouro: organizacao.logradouro,
+    numero: organizacao.numero,
+    bairro: organizacao.bairro,
+    municipio_ibge_codigo: organizacao.municipio_ibge_codigo,
+    municipio_nome: organizacao.municipio_nome,
+    licenca_numero: organizacao.licenca_numero,
+    licenca_validade: organizacao.licenca_validade,
+  };
+}
+
 export function Organizacoes() {
   const [rascunhoDaBusca, setRascunhoDaBusca] = useState("");
   const [busca, setBusca] = useState("");
   const [pagina, setPagina] = useState(1);
-  const [cadastrando, setCadastrando] = useState(false);
+  // O formulário pode estar fechado (null), cadastrando uma organização nova
+  // ("nova") ou alterando uma existente (a própria organização).
+  const [formulario, setFormulario] = useState<Organizacao | "nova" | null>(null);
   const [recado, setRecado] = useState<string | null>(null);
 
   const lista = useCarregamento(() => api.listarOrganizacoes({ busca, pagina }), `${busca}|${pagina}`);
@@ -86,11 +115,11 @@ export function Organizacoes() {
                 type="button"
                 className="botao botao-principal"
                 onClick={() => {
-                  setCadastrando((atual) => !atual);
+                  setFormulario(formulario === null ? "nova" : null);
                   setRecado(null);
                 }}
               >
-                {cadastrando ? "Fechar formulário" : "Nova organização"}
+                {formulario === null ? "Nova organização" : "Fechar formulário"}
               </button>
             </div>
           </form>
@@ -99,11 +128,15 @@ export function Organizacoes() {
 
       {recado !== null && <div className="aviso aviso-sucesso">{recado}</div>}
 
-      {cadastrando && (
+      {formulario !== null && (
         <Formulario
-          aoCadastrar={(razaoSocial) => {
-            setCadastrando(false);
-            setRecado(`${razaoSocial} foi cadastrada.`);
+          // A chave recria o formulário ao trocar de organização, para que ele
+          // não carregue os dados da anterior.
+          key={formulario === "nova" ? "nova" : formulario.id}
+          original={formulario === "nova" ? null : formulario}
+          aoSalvar={(mensagem) => {
+            setFormulario(null);
+            setRecado(mensagem);
             lista.recarregar();
           }}
         />
@@ -133,6 +166,7 @@ export function Organizacoes() {
                     <th>Município</th>
                     <th>Licença</th>
                     <th>Situação</th>
+                    <th aria-label="Ações" />
                   </tr>
                 </thead>
                 <tbody>
@@ -154,6 +188,20 @@ export function Organizacoes() {
                         ) : (
                           <Marcador tom="positiva">Apta</Marcador>
                         )}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="botao-texto"
+                          onClick={() => {
+                            setFormulario(organizacao);
+                            setRecado(null);
+                            // O formulário fica no topo da página, acima da lista.
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                        >
+                          Alterar
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -179,15 +227,30 @@ export function Organizacoes() {
   );
 }
 
-function Formulario({ aoCadastrar }: { aoCadastrar: (razaoSocial: string) => void }) {
-  const [dados, setDados] = useState<OrganizacaoNova>(VAZIA);
+/**
+ * Cadastro (sem `original`) ou alteração (com a organização a alterar).
+ */
+function Formulario({
+  original,
+  aoSalvar,
+}: {
+  original: Organizacao | null;
+  aoSalvar: (mensagem: string) => void;
+}) {
+  const alterando = original !== null;
+  const [dados, setDados] = useState<OrganizacaoNova>(
+    original === null ? VAZIA : paraOFormulario(original),
+  );
+  const [ativa, setAtiva] = useState(original?.ativo ?? true);
   const envio = useAcao();
   const consultaDeCep = useAcao();
 
   const [fonteDoCep, setFonteDoCep] = useState<FonteDoDado | null>(null);
   const [avisoDoCep, setAvisoDoCep] = useState<string | null>(null);
   // Evita repetir a consulta do mesmo CEP a cada vez que o campo perde o foco.
-  const [cepConsultado, setCepConsultado] = useState("");
+  // Na alteração, o CEP gravado conta como já consultado: passar pelo campo
+  // sem mudá-lo não deve sobrescrever o endereço com a resposta do ViaCEP.
+  const [cepConsultado, setCepConsultado] = useState(original?.cep ?? "");
 
   const municipios = useCarregamento(() => api.municipiosDeGoias(), "");
   const listaDeMunicipios = municipios.dado?.valor ?? [];
@@ -242,16 +305,26 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (razaoSocial: string) => voi
     evento.preventDefault();
 
     const certo = await envio.executar(async () => {
-      await api.criarOrganizacao({ ...dados, cnpj: somenteDigitos(dados.cnpj) });
+      if (original === null) {
+        await api.criarOrganizacao({ ...dados, cnpj: somenteDigitos(dados.cnpj) });
+      } else {
+        // CNPJ e papel ficam de fora: o servidor não os deixa mudar.
+        const { cnpj: _cnpj, papel: _papel, ...alteraveis } = dados;
+        await api.alterarOrganizacao(original.id, { ...alteraveis, ativo: ativa });
+      }
     });
 
-    if (certo) aoCadastrar(dados.razao_social);
+    if (certo) {
+      aoSalvar(`${dados.razao_social} foi ${alterando ? "alterada" : "cadastrada"}.`);
+    }
   }
+
+  const rotuloDoBotao = alterando ? "Salvar alterações" : "Cadastrar organização";
 
   return (
     <section className="cartao">
       <header>
-        <h2>Nova organização</h2>
+        <h2>{alterando ? "Alterar organização" : "Nova organização"}</h2>
         <span className="miudo">município pela lista do IBGE; endereço pelo CEP</span>
       </header>
 
@@ -269,22 +342,32 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (razaoSocial: string) => voi
 
             <Campo
               rotulo="CNPJ"
-              ajuda="Com ou sem máscara; os dígitos verificadores são conferidos."
+              ajuda={
+                alterando
+                  ? "O CNPJ identifica a organização e não muda."
+                  : "Com ou sem máscara; os dígitos verificadores são conferidos."
+              }
               erro={envio.erro?.doCampo("cnpj")}
             >
               <input
                 value={dados.cnpj}
                 onChange={(evento) => alterar({ cnpj: evento.target.value })}
+                disabled={alterando}
                 required
               />
             </Campo>
           </div>
 
           <div className="grade tres">
-            <Campo rotulo="Papel no ciclo do resíduo" erro={envio.erro?.doCampo("papel")}>
+            <Campo
+              rotulo="Papel no ciclo do resíduo"
+              ajuda={alterando ? "Não muda: os manifestos em andamento dependem dele." : undefined}
+              erro={envio.erro?.doCampo("papel")}
+            >
               <select
                 value={dados.papel}
                 onChange={(evento) => alterar({ papel: evento.target.value as PapelOrganizacao })}
+                disabled={alterando}
               >
                 {PAPEIS.map((papel) => (
                   <option key={papel} value={papel}>
@@ -388,6 +471,24 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (razaoSocial: string) => voi
             </Campo>
           </div>
 
+          {alterando && (
+            <div className="grade duas">
+              <Campo
+                rotulo="Situação"
+                ajuda="Inativa, não entra em manifestos novos; os que estão em andamento continuam."
+                erro={envio.erro?.doCampo("ativo")}
+              >
+                <select
+                  value={ativa ? "ativa" : "inativa"}
+                  onChange={(evento) => setAtiva(evento.target.value === "ativa")}
+                >
+                  <option value="ativa">Ativa</option>
+                  <option value="inativa">Inativa</option>
+                </select>
+              </Campo>
+            </div>
+          )}
+
           {avisoDoCep !== null && <div className="aviso aviso-atencao">{avisoDoCep}</div>}
 
           {fonteDoCep === "cache-expirado" && (
@@ -403,7 +504,7 @@ function Formulario({ aoCadastrar }: { aoCadastrar: (razaoSocial: string) => voi
 
           <div className="rodape-do-formulario">
             <button type="submit" className="botao botao-principal" disabled={envio.executando}>
-              {envio.executando ? "Cadastrando…" : "Cadastrar organização"}
+              {envio.executando ? "Salvando…" : rotuloDoBotao}
             </button>
           </div>
         </form>

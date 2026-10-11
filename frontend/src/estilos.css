@@ -276,6 +276,11 @@ a {
   margin-top: 8px;
 }
 
+.usuario-atual-acoes {
+  display: flex;
+  gap: 14px;
+}
+
 /* --------------------------------------------------------------------------
  * Cartões e tabelas
  * -------------------------------------------------------------------------- */
@@ -744,8 +749,12 @@ select:disabled {
   border: none;
   background: none;
   color: var(--verde);
+  /* Igual em <button> e em <a>: o botão não herda a fonte da página sozinho. */
+  font: inherit;
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: underline;
+  cursor: pointer;
 }
 
 .botao-texto:hover:not(:disabled) {
@@ -792,6 +801,18 @@ select:disabled {
   opacity: 0.75;
   margin-top: 3px;
   font-family: Consolas, "SF Mono", Menlo, monospace;
+}
+
+/* Mensagens da consulta SOAP: o XML como veio, sem quebrar as linhas. */
+.xml {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  white-space: pre;
+  font-family: Consolas, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  background: var(--fundo-suave);
 }
 
 .carregando,

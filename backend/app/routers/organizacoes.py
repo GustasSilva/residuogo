@@ -1,8 +1,8 @@
 """Rotas de cadastro e consulta das organizacoes participantes.
 
-Cadastro restrito ao ADMIN; consulta liberada a qualquer usuario autenticado,
-porque a tela de novo manifesto precisa listar transportadores e destinadores
-disponiveis.
+Cadastro e alteracao restritos ao ADMIN; consulta liberada a qualquer
+usuario autenticado, porque a tela de novo manifesto precisa listar
+transportadores e destinadores disponiveis.
 """
 
 from typing import Annotated
@@ -14,7 +14,7 @@ from app.dependencies import PaginaParams, Sessao, UsuarioAdmin, UsuarioAtual
 from app.enums import PapelOrganizacao
 from app.models import Organizacao
 from app.paginacao import paginar
-from app.schemas import OrganizacaoCriar, OrganizacaoSaida, Pagina
+from app.schemas import OrganizacaoAtualizar, OrganizacaoCriar, OrganizacaoSaida, Pagina
 from app.services import organizacoes as servico
 
 router = APIRouter(prefix="/organizacoes", tags=["Organizações"])
@@ -95,3 +95,19 @@ def listar(
 )
 def detalhar(organizacao_id: int, sessao: Sessao, _: UsuarioAtual) -> Organizacao:
     return servico.buscar(sessao, organizacao_id)
+
+
+@router.put(
+    "/{organizacao_id}",
+    response_model=OrganizacaoSaida,
+    summary="Altera os dados de uma organização (ADMIN)",
+)
+def atualizar(
+    organizacao_id: int, dados: OrganizacaoAtualizar, sessao: Sessao, _: UsuarioAdmin
+) -> Organizacao:
+    """Substitui endereço, licença ambiental e situação da organização.
+
+    CNPJ e papel não mudam (ver o schema `OrganizacaoAtualizar`). Renovar a
+    licença por aqui devolve a organização à lista de aptas da emissão (RN04).
+    """
+    return servico.atualizar(sessao, organizacao_id, dados)

@@ -9,10 +9,10 @@ from fastapi import APIRouter, status
 from sqlalchemy import select
 
 from app.dependencies import PaginaParams, Sessao, UsuarioAdmin, UsuarioAtual
-from app.errors import Conflito
+from app.errors import Conflito, RecursoNaoEncontrado
 from app.models import TipoResiduo
 from app.paginacao import paginar
-from app.schemas import Pagina, TipoResiduoCriar, TipoResiduoSaida
+from app.schemas import Pagina, TipoResiduoAtualizar, TipoResiduoCriar, TipoResiduoSaida
 
 router = APIRouter(prefix="/tipos-residuo", tags=["Tipos de resíduo"])
 
@@ -43,3 +43,29 @@ def criar(dados: TipoResiduoCriar, sessao: Sessao, _: UsuarioAdmin) -> TipoResid
 def listar(sessao: Sessao, paginacao: PaginaParams, _: UsuarioAtual) -> dict:
     consulta = select(TipoResiduo).order_by(TipoResiduo.codigo)
     return paginar(sessao, consulta, paginacao)
+
+
+@router.put(
+    "/{tipo_id}",
+    response_model=TipoResiduoSaida,
+    summary="Corrige um tipo de resíduo (ADMIN)",
+)
+def atualizar(
+    tipo_id: int, dados: TipoResiduoAtualizar, sessao: Sessao, _: UsuarioAdmin
+) -> TipoResiduo:
+    """Corrige descrição, classe ou unidade padrão de um tipo do catálogo.
+
+    Os relatórios agrupam pela classe atual do tipo, então uma classe
+    corrigida vale também para períodos passados — que é o desejado quando a
+    alteração conserta um erro de cadastro.
+    """
+    tipo = sessao.get(TipoResiduo, tipo_id)
+    if tipo is None:
+        raise RecursoNaoEncontrado(f"Tipo de resíduo {tipo_id} não encontrado.")
+
+    for campo, valor in dados.model_dump().items():
+        setattr(tipo, campo, valor)
+
+    sessao.commit()
+    sessao.refresh(tipo)
+    return tipo

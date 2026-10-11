@@ -12,6 +12,7 @@ esperado, e que todo erro sai como um SOAP Fault bem formado.
 from fastapi.testclient import TestClient
 from lxml import etree
 
+from app.config import config
 from app.enums import StatusManifesto, TipoDestinacao
 from app.models import Manifesto
 from app.soap.envelope import NS_SERVICO, NS_SOAP
@@ -253,3 +254,44 @@ class TestDefesaContraXxe:
 
         assert "root:" not in resposta.text, "o conteúdo do arquivo não pode vazar"
         assert b"Fault" in resposta.content
+
+
+class TestConsumoPeloNavegador:
+    """A tela "Consulta SOAP" do front-end chama este servico direto do navegador.
+
+    Para isso o servidor precisa autorizar a origem do front-end (CORS) em dois
+    momentos: na pergunta previa que o navegador faz antes de enviar XML, e na
+    resposta com Fault, que chega com HTTP 500 e ainda assim precisa ser lida.
+    """
+
+    ORIGEM_DO_FRONT = config.cors_origens[0]
+
+    def test_pergunta_previa_do_navegador_e_autorizada(self, cliente: TestClient) -> None:
+        resposta = cliente.options(
+            ENDERECO,
+            headers={
+                "Origin": self.ORIGEM_DO_FRONT,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,soapaction",
+            },
+        )
+
+        assert resposta.status_code == 200
+        assert resposta.headers["access-control-allow-origin"] == self.ORIGEM_DO_FRONT
+
+    def test_fault_tambem_pode_ser_lido_pelo_navegador(
+        self, cliente: TestClient, dados: dict
+    ) -> None:
+        envelope = ENVELOPE_CONSULTA.format(
+            ns=NS_SERVICO, numero="RGO-2026-999999", cnpj=dados["gerador"].cnpj
+        )
+
+        resposta = cliente.post(
+            ENDERECO,
+            content=envelope.encode("utf-8"),
+            headers={"Content-Type": "text/xml; charset=utf-8", "Origin": self.ORIGEM_DO_FRONT},
+        )
+
+        assert resposta.status_code == 500
+        assert resposta.headers["access-control-allow-origin"] == self.ORIGEM_DO_FRONT
+        assert ler_falha(resposta)[2] == "RECURSO_NAO_ENCONTRADO"
