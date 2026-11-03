@@ -18,12 +18,11 @@ O projeto tem um web service REST próprio, que reúne dados de APIs externas, e
 
 ## Como rodar
 
-Precisa de Python 3.12 ou mais novo.
+Testado com Python 3.13. No PowerShell, a partir da raiz do projeto:
 
 ```
-cd backend
 python -m venv .venv
-.venv/Scripts/activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
@@ -81,25 +80,24 @@ Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 
 Os servidores públicos do Overpass ficam sobrecarregados com frequência, então a busca foi feita para continuar sem eles:
 
-1. Toda resposta externa fica guardada em um cache em arquivo (`backend/cache.db`).
+1. As respostas externas ficam guardadas em um cache em arquivo (`cache.db`).
 2. A busca pergunta aos três servidores do Overpass ao mesmo tempo, espera até 25 segundos e usa a primeira resposta.
-3. Se nenhum responder, usa a última consulta guardada ou a cópia dos dados de Goiás que fica no projeto, e avisa na tela.
+3. Se nenhum responder, usa a cópia dos dados de Goiás que fica no projeto e avisa na tela.
 4. Depois de uma falha, passa 2 minutos sem tentar o Overpass, para ninguém esperar os 25 segundos de novo.
 5. Sem o Nominatim, as distâncias contam a partir do centro do município, informado pelo IBGE.
 
-Para atualizar a cópia, que fica em `backend/app/dados/osm_goias.json`:
+Para atualizar a cópia, que fica em `dados/osm_goias.json`:
 
 ```
-cd backend
 python -m scripts.atualizar_copia_osm
 ```
-
-Para a apresentação, vale fazer antes as buscas que serão mostradas: elas ficam no cache e respondem na hora.
 
 ## De onde vêm os pontos
 
 - **OpenStreetMap:** o mapa é aberto e feito por voluntários, então pode faltar ponto e a maioria não informa os materiais aceitos. Nesses casos, a tela mostra "Materiais aceitos não informados". Aterros e lixões ficam de fora, porque não recebem entrega de quem procura um ponto. As centrais de embalagens de agrotóxicos são reconhecidas pelo nome.
-- **Ecopontos de Goiânia:** os cinco ecopontos permanentes ficam em `backend/app/dados/ecopontos_goiania.json`. Não foi encontrada uma API oficial, então os dados vieram da [Prefeitura de Goiânia](http://gyncoletaseletiva.goiania.go.gov.br/ecoponto/) e da imprensa ([Tribuna do Planalto, 2024](https://tribunadoplanalto.com.br/prefeitura-disponibiliza-ecoponto-para-descarte-na-regiao-oeste/) e [Jornal Opção](https://www.jornalopcao.com.br/ultimas-noticias/entulho-moveis-e-pneus-goiania-podera-ampliar-rede-de-ecopontos-para-23-unidades-846959/)).
+- **Ecopontos de Goiânia:** os cinco ecopontos permanentes ficam em `dados/ecopontos_goiania.json`. Não foi encontrada uma API oficial, então os dados vieram da [Prefeitura de Goiânia](http://gyncoletaseletiva.goiania.go.gov.br/ecoponto/) e da imprensa ([Tribuna do Planalto, 2024](https://tribunadoplanalto.com.br/prefeitura-disponibiliza-ecoponto-para-descarte-na-regiao-oeste/) e [Jornal Opção](https://www.jornalopcao.com.br/ultimas-noticias/entulho-moveis-e-pneus-goiania-podera-ampliar-rede-de-ecopontos-para-23-unidades-846959/)). Eles não foram conferidos um a um, e a página pede para confirmar o funcionamento antes de ir.
+
+Só aparecem pontos dentro de Goiás, conferidos com o contorno oficial do estado, da API de malhas do IBGE (`dados/limite_goias.json`).
 
 As cores dos materiais na tela seguem a Resolução CONAMA 275/2001. Os itens que ela não cobre aparecem em cinza.
 
@@ -110,32 +108,29 @@ Dar o destino correto aos resíduos é um dos controles mais comuns na gestão a
 ## Testes
 
 ```
-cd backend
-pip install -r requirements.txt
 python -m pytest
 ```
 
-Os testes não usam a internet: as APIs externas são simuladas. Cobrem a conversão dos dados, o filtro, as respostas de erro e as quedas de cada serviço.
+Os testes não usam a internet: as APIs externas são simuladas.
 
 ## Estrutura
 
 ```
-backend/
-  app/
-    main.py          rotas do web service
-    localizacao.py   CEP, municípios e coordenadas
-    pontos.py        busca dos pontos, distância e filtro
-    materiais.py     materiais e etiquetas do OpenStreetMap
-    externo.py       chamadas HTTP e política de cache
-    cache.py         cache em SQLite
-    errors.py        respostas de erro (RFC 7807)
-    schemas.py       formato das respostas
-    config.py        endereços, prazos e tempos limite
-    dados/           ecopontos e cópia de reserva
-    web/             página (HTML, CSS e JavaScript)
-  scripts/           atualização da cópia e extração de trechos
-  tests/
-docs/                diagramas, telas e trechos para o relatório
+app/
+  main.py          rotas do web service
+  pontos.py        a busca: junta as fontes, filtra e ordena
+  overpass.py      pontos do OpenStreetMap
+  localizacao.py   CEP, municípios, coordenadas e limite de Goiás
+  materiais.py     materiais e etiquetas do OpenStreetMap
+  externo.py       chamadas HTTP e cache
+  erros.py         respostas de erro (RFC 7807)
+  schemas.py       formato das respostas
+  config.py        endereços, prazos e tempos limite
+web/               página (HTML, CSS e JavaScript)
+dados/             ecopontos, cópia do OpenStreetMap e contorno de Goiás
+scripts/           atualização da cópia e extração de trechos
+tests/
+docs/              diagramas, telas e trechos para o relatório
 ```
 
 ## Relatório da APS
@@ -143,6 +138,5 @@ docs/                diagramas, telas e trechos para o relatório
 O relatório de código tem limite de 10 páginas. Os trechos escolhidos são marcados no código com `APS-TRECHO` e reunidos em `docs/TRECHOS_DE_CODIGO.md`:
 
 ```
-cd backend
 python -m scripts.exportar_trechos
 ```

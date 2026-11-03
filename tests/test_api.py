@@ -13,10 +13,17 @@ def test_pagina_inicial_e_servida(cliente):
     assert "ResíduoGO" in resposta.text
 
 
+def test_arquivos_da_pagina_sao_servidos(cliente):
+    assert cliente.get("/app.js").status_code == 200
+    assert cliente.get("/estilo.css").status_code == 200
+
+
 def test_documentacao_da_api_existe(cliente):
     assert cliente.get("/docs").status_code == 200
-    rotas = cliente.get("/openapi.json").json()["paths"]
-    assert {"/api/pontos", "/api/pontos.csv", "/api/municipios", "/api/materiais"} <= set(rotas)
+    documentacao = cliente.get("/openapi.json").json()["paths"]
+    assert {"/api/pontos", "/api/pontos.csv", "/api/municipios", "/api/materiais"} <= set(documentacao)
+    parametros = {item["name"] for item in documentacao["/api/pontos.csv"]["get"]["parameters"]}
+    assert parametros == {"cep", "municipio", "raio_km", "material"}
 
 
 def test_busca_por_cep(cliente, apis_ok):
@@ -143,21 +150,20 @@ def test_viacep_fora_do_ar_responde_503(cliente, apis):
 def test_viacep_fora_do_ar_usa_o_cep_ja_consultado(cliente, apis_ok, monkeypatch):
     assert cliente.get("/api/pontos", params={"cep": "74230010"}).status_code == 200
 
-    monkeypatch.setattr(config, "VALIDADE_CEP", -1)
+    monkeypatch.setattr(config, "VALIDADE_ENDERECOS", -1)
     apis_ok.get(config.URL_VIACEP.format(cep="74230010")).respond(status_code=500)
     assert cliente.get("/api/pontos", params={"cep": "74230010"}).status_code == 200
 
 
-def test_overpass_fora_do_ar_nao_derruba_a_busca(cliente, apis, monkeypatch):
+def test_overpass_fora_do_ar_nao_derruba_a_busca(cliente, apis):
     apis.get(config.URL_VIACEP.format(cep="74230010")).respond(json=BUENO)
     apis.get(config.URL_NOMINATIM).respond(json=[{"lat": "-16.70", "lon": "-49.27"}])
     derrubar_overpass(apis)
-    monkeypatch.setattr("app.pontos._copia_de_reserva", lambda: None)
     resposta = cliente.get("/api/pontos", params={"cep": "74230010", "raio_km": 25})
     corpo = resposta.json()
     assert resposta.status_code == 200
     assert "não respondeu" in corpo["avisos"][0]
-    assert sum(ponto["tipo"] == "Ecoponto" for ponto in corpo["pontos"]) == 5
+    assert sum(ponto["tipo"] == "Ecoponto" for ponto in corpo["pontos"]) >= 5
 
 
 def test_municipios_em_ordem_alfabetica_com_regiao(cliente, apis_ok):

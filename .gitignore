@@ -2,19 +2,10 @@
 __pycache__/
 *.py[cod]
 .venv/
-venv/
-
-# Banco de dados local
-*.db
-*.sqlite3
-
-# Testes e ferramentas
 .pytest_cache/
-.ruff_cache/
-htmlcov/
-.coverage
 
-# Download da copia do OpenStreetMap ainda nao concluido
+# Gerados ao rodar
+cache.db
 copia_osm_em_andamento.json
 
 # Editores e sistema

@@ -1,65 +1,107 @@
-# Trechos de código para o relatório impresso
+# Trechos de código para o relatório
 
-Gerado por `scripts/exportar_trechos.py` a partir das marcas `APS-TRECHO`
-deixadas no código-fonte. Não editar à mão: a próxima execução sobrescreve.
+Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
-**7 trechos, 230 linhas de código.** O relatório admite cerca de 380 linhas (10 páginas em Arial 12, espaçamento 1,5), então ainda cabem comentários de abertura e as legendas de cada trecho.
+8 trechos, 268 linhas. O limite é de cerca de 380 linhas.
 
-| # | Trecho | Onde | Linhas |
-|---|---|---|---|
-| 1 | De onde vem os pontos, e o que acontece quando o Overpass cai | `backend/app/pontos.py` | 27 |
-| 2 | Do CEP ate as coordenadas, da busca mais precisa para a menos precisa | `backend/app/localizacao.py` | 23 |
-| 3 | Consulta externa com cache e tratamento de queda | `backend/app/externo.py` | 21 |
-| 4 | Do dado cru do OpenStreetMap para um ponto de coleta | `backend/app/pontos.py` | 33 |
-| 5 | Todas as respostas de erro no mesmo formato (RFC 7807) | `backend/app/errors.py` | 34 |
-| 6 | As rotas do web service | `backend/app/main.py` | 44 |
-| 7 | A pagina consumindo o web service | `backend/app/web/app.js` | 48 |
+## 1. As rotas do web service
 
----
-
-## 1. De onde vem os pontos, e o que acontece quando o Overpass cai
-
-`backend/app/pontos.py`, linhas 147 a 173
+`app/main.py`
 
 ```python
-def _elementos_do_osm(latitude: float, longitude: float, raio_km: int) -> tuple[list[dict], str]:
-    """Devolve os elementos do OpenStreetMap e um aviso, se o dado nao for atual."""
-    global _ultima_falha_overpass
-    chave = f"overpass:{latitude:.3f},{longitude:.3f},{raio_km}"
-    guardado = cache.obter(chave)
-    if guardado and time.time() - guardado[1] < config.VALIDADE_PONTOS:
-        return guardado[0], ""
+def _consultar(
+    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
+    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
+    raio_km: int = Query(10, description="Distância máxima, em km."),
+    material: str | None = Query(None, description="Chave de um item de /api/materiais."),
+) -> dict:
+    """Valida os parametros e faz a busca. Serve as rotas em JSON e em CSV."""
+    if bool(cep) == bool(municipio):
+        raise DadosInvalidos("Informe o CEP ou o município, um dos dois.")
+    if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
+        raise DadosInvalidos(
+            f"A distância precisa ficar entre {config.RAIO_MINIMO_KM} e {config.RAIO_MAXIMO_KM} km."
+        )
+    if material and material not in MATERIAIS:
+        raise DadosInvalidos(f"O material {material} não existe. Veja a lista em /api/materiais.")
 
-    # Logo depois de uma falha nao adianta esperar o tempo limite de novo.
-    if time.monotonic() - _ultima_falha_overpass >= config.ESPERA_APOS_FALHA_OVERPASS:
-        try:
-            elementos = _perguntar_ao_overpass(latitude, longitude, raio_km)
-            cache.guardar(chave, elementos)
-            return elementos, ""
-        except FalhaExterna:
-            _ultima_falha_overpass = time.monotonic()
+    if cep:
+        origem = localizacao.origem_por_cep(localizacao.limpar_cep(cep))
+    else:
+        origem = localizacao.origem_por_municipio(municipio)
 
-    if guardado:
-        data = datetime.fromtimestamp(guardado[1]).strftime("%d/%m/%Y")
-        return guardado[0], f"O OpenStreetMap não respondeu. Estes pontos são da consulta de {data}."
+    encontrados, avisos = pontos.buscar(origem["latitude"], origem["longitude"], raio_km, material)
+    return {
+        "origem": origem,
+        "raio_km": raio_km,
+        "material": material or None,
+        "total": len(encontrados),
+        "pontos": encontrados,
+        "avisos": avisos,
+    }
 
-    copia = _copia_de_reserva()
-    if copia is None:
-        return [], "O OpenStreetMap não respondeu. Só os pontos da lista do projeto aparecem aqui."
 
-    data = date.fromisoformat(copia["gerado_em"]).strftime("%d/%m/%Y")
-    return copia["elementos"], f"O OpenStreetMap não respondeu. Estes pontos são da cópia de {data}."
+@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP ou município")
+def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
+    return resultado
+
+
+@app.get("/api/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
+def exportar_pontos(resultado: dict = Depends(_consultar)) -> Response:
+    return Response(
+        content=_planilha(resultado["pontos"]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.csv"'},
+    )
+
+
+@app.get("/api/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
+def listar_municipios() -> list[dict]:
+    return localizacao.municipios()
+
+
+@app.get("/api/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
+def listar_materiais() -> list[dict]:
+    return para_saida(list(MATERIAIS))
 ```
 
----
+## 2. A busca dos pontos de coleta
 
-## 2. Do CEP ate as coordenadas, da busca mais precisa para a menos precisa
+`app/pontos.py`
 
-`backend/app/localizacao.py`, linhas 125 a 147
+```python
+def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> tuple[list[dict], list[str]]:
+    """Pontos de Goias dentro do raio, do mais perto para o mais longe, e os avisos da consulta.
+
+    Com um material escolhido, tambem entram os pontos que nao informam o que
+    aceitam: a tela avisa a pessoa para confirmar antes de ir.
+    """
+    elementos, aviso = overpass.elementos_perto(latitude, longitude, raio_km)
+    do_mapa = [ponto for ponto in map(overpass.ponto_do_elemento, elementos) if ponto]
+
+    # Os ecopontos vem primeiro para terem preferencia sobre o mesmo lugar no mapa.
+    perto = []
+    for ponto in [*_ecopontos(), *do_mapa]:
+        distancia = distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"])
+        if distancia <= raio_km and dentro_de_goias(ponto["latitude"], ponto["longitude"]):
+            perto.append({**ponto, "distancia_km": round(distancia, 1)})
+
+    resultado = [
+        {**ponto, "materiais": para_saida(ponto["materiais"])}
+        for ponto in _remover_duplicatas(perto)
+        if not material or not ponto["materiais"] or material in ponto["materiais"]
+    ]
+    resultado.sort(key=lambda ponto: ponto["distancia_km"])
+    return resultado, [aviso] if aviso else []
+```
+
+## 3. Do CEP ate as coordenadas, da busca mais precisa para a menos precisa
+
+`app/localizacao.py`
 
 ```python
 def origem_por_cep(cep: str) -> dict:
-    endereco = endereco_do_cep(cep)
+    endereco = _endereco_do_cep(cep)
     cidade = endereco["localidade"]
     rua = endereco.get("logradouro", "")
     bairro = endereco.get("bairro", "")
@@ -71,57 +113,68 @@ def origem_por_cep(cep: str) -> dict:
         tentativas.append(("bairro", {"q": f"{bairro}, {cidade}, Goiás"}))
     tentativas.append(("município", {"city": cidade}))
 
-    for precisao, params in tentativas:
+    descricao = ", ".join(parte for parte in (rua, bairro, f"{cidade} - GO") if parte)
+    return _origem(descricao, tentativas, endereco["ibge"])
+
+
+def origem_por_municipio(codigo: str) -> dict:
+    if not re.fullmatch(r"52\d{5}", codigo):
+        raise DadosInvalidos("O código do município precisa ser um código IBGE de Goiás, com 7 dígitos.")
+    cidade = _nome_do_municipio(codigo)
+    return _origem(f"{cidade} - GO", [("município", {"city": cidade})], codigo)
+
+
+def _origem(descricao: str, tentativas: list[tuple[str, dict]], codigo_ibge: str) -> dict:
+    """Usa a primeira coordenada encontrada; sem nenhuma, o centro do municipio pelo IBGE."""
+    coordenadas, precisao = None, "município"
+    for precisao_da_busca, busca in tentativas:
         try:
-            coordenadas = _geocodificar(**params)
+            coordenadas = _coordenadas_nominatim(**busca)
         except ServicoIndisponivel:
-            # Sem Nominatim, o centro do municipio informado pelo IBGE ainda serve.
             break
         if coordenadas:
-            return _origem(_descrever(rua, bairro, cidade), coordenadas, precisao)
+            precisao = precisao_da_busca
+            break
 
-    return _origem(_descrever(rua, bairro, cidade), _centro_ibge(endereco["ibge"]), "município")
+    latitude, longitude = coordenadas or _centro_do_municipio(codigo_ibge)
+    return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
 ```
 
----
+## 4. De onde vem os pontos, e o que acontece quando o Overpass cai
 
-## 3. Consulta externa com cache e tratamento de queda
-
-`backend/app/externo.py`, linhas 51 a 71
+`app/overpass.py`
 
 ```python
-def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
-    """Devolve o dado do cache ou da API; se a API falhar, usa o cache vencido.
+def elementos_perto(latitude: float, longitude: float, raio_km: int) -> tuple[list[dict], str]:
+    """Devolve os elementos do mapa e um aviso, quando eles vierem da copia."""
+    global _ultima_falha
+    chave = f"overpass:{latitude:.3f},{longitude:.3f},{raio_km}"
+    guardado = ler_do_cache(chave)
+    if guardado and time.time() - guardado[1] < config.VALIDADE_PONTOS:
+        return guardado[0], ""
 
-    Sem API e sem cache, a busca nao tem como continuar e o cliente recebe 503.
-    """
-    guardado = cache.obter(chave)
-    if guardado and time.time() - guardado[1] < validade:
-        return guardado[0]
+    # Logo depois de uma falha nao adianta esperar o tempo limite de novo.
+    if time.monotonic() - _ultima_falha >= config.ESPERA_APOS_FALHA_OVERPASS:
+        try:
+            elementos = _perguntar_aos_servidores(latitude, longitude, raio_km)
+        except FalhaExterna:
+            _ultima_falha = time.monotonic()
+        else:
+            guardar_no_cache(chave, elementos)
+            return elementos, ""
 
-    try:
-        dado = consultar()
-    except FalhaExterna as falha:
-        logger.warning("Falha externa: %s", falha)
-        if guardado:
-            return guardado[0]
-        raise ServicoIndisponivel(
-            f"O serviço {servico} não respondeu. Tente novamente em alguns instantes."
-        ) from falha
-
-    cache.guardar(chave, dado)
-    return dado
+    copia = _copia_de_reserva()
+    data = date.fromisoformat(copia["gerado_em"]).strftime("%d/%m/%Y")
+    return copia["elementos"], f"O OpenStreetMap não respondeu. Estes pontos são da cópia de {data}."
 ```
 
----
+## 5. Do dado cru do OpenStreetMap para um ponto de coleta
 
-## 4. Do dado cru do OpenStreetMap para um ponto de coleta
-
-`backend/app/pontos.py`, linhas 45 a 77
+`app/overpass.py`
 
 ```python
 def ponto_do_elemento(elemento: dict) -> dict | None:
-    """Converte um elemento do OpenStreetMap, ou devolve None se ele nao serve."""
+    """Converte um elemento do mapa, ou devolve None se ele nao recebe entregas."""
     etiquetas = elemento.get("tags", {})
     latitude = elemento.get("lat", elemento.get("center", {}).get("lat"))
     longitude = elemento.get("lon", elemento.get("center", {}).get("lon"))
@@ -135,11 +188,7 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
     if etiquetas.get("amenity") == "waste_transfer_station" and "ecoponto" not in nome.casefold():
         return None
 
-    materiais = materiais_das_etiquetas(etiquetas)
     agrotoxico = bool(NOMES_DE_AGROTOXICOS.search(nome))
-    if agrotoxico:
-        materiais = ["agrotoxicos"]
-
     tipo = _tipo(nome, etiquetas, agrotoxico)
     return {
         "nome": nome or f"{tipo} (sem nome no mapa)",
@@ -147,7 +196,7 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
         "endereco": _endereco(etiquetas),
         "latitude": latitude,
         "longitude": longitude,
-        "materiais": materiais,
+        "materiais": ["agrotoxicos"] if agrotoxico else materiais_das_etiquetas(etiquetas),
         "telefone": etiquetas.get("phone") or etiquetas.get("contact:phone") or "",
         "horario": etiquetas.get("opening_hours", ""),
         "observacao": "",
@@ -155,11 +204,37 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
     }
 ```
 
----
+## 6. Consulta externa com cache e tratamento de queda
 
-## 5. Todas as respostas de erro no mesmo formato (RFC 7807)
+`app/externo.py`
 
-`backend/app/errors.py`, linhas 42 a 75
+```python
+def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
+    """Devolve o dado do cache ou da API; se a API falhar, usa o cache vencido.
+
+    Sem API e sem cache, a busca nao tem como continuar e o cliente recebe 503.
+    """
+    guardado = ler_do_cache(chave)
+    if guardado and time.time() - guardado[1] < validade:
+        return guardado[0]
+
+    try:
+        dado = consultar()
+    except FalhaExterna as falha:
+        logger.warning("Falha externa: %s", falha)
+        if guardado:
+            return guardado[0]
+        raise ServicoIndisponivel(
+            f"O serviço {servico} não respondeu. Tente novamente em alguns instantes."
+        ) from falha
+
+    guardar_no_cache(chave, dado)
+    return dado
+```
+
+## 7. Todas as respostas de erro no mesmo formato (RFC 7807)
+
+`app/erros.py`
 
 ```python
 def _problema(request: Request, status: int, titulo: str, detalhe: str) -> JSONResponse:
@@ -198,64 +273,9 @@ def registrar_handlers(app: FastAPI) -> None:
         return _problema(request, 500, "Erro interno", "Ocorreu uma falha inesperada no servidor.")
 ```
 
----
+## 8. A pagina consumindo o web service
 
-## 6. As rotas do web service
-
-`backend/app/main.py`, linhas 37 a 80
-
-```python
-def _consultar(cep: str | None, municipio: str | None, raio_km: int, material: str | None) -> dict:
-    if bool(cep) == bool(municipio):
-        raise DadosInvalidos("Informe o CEP ou o município, um dos dois.")
-    if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
-        raise DadosInvalidos(
-            f"A distância precisa ficar entre {config.RAIO_MINIMO_KM} e {config.RAIO_MAXIMO_KM} km."
-        )
-    if material and material not in MATERIAIS:
-        raise DadosInvalidos(f"O material {material} não existe. Veja a lista em /api/materiais.")
-
-    if cep:
-        origem = localizacao.origem_por_cep(localizacao.limpar_cep(cep))
-    else:
-        origem = localizacao.origem_por_municipio(municipio)
-
-    encontrados, avisos = pontos.buscar(origem["latitude"], origem["longitude"], raio_km, material)
-    return {
-        "origem": origem,
-        "raio_km": raio_km,
-        "material": material or None,
-        "total": len(encontrados),
-        "pontos": encontrados,
-        "avisos": avisos,
-    }
-
-
-@app.get("/api/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
-def listar_municipios() -> list[dict]:
-    return localizacao.municipios()
-
-
-@app.get("/api/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
-def listar_materiais() -> list[dict]:
-    return para_saida(list(MATERIAIS))
-
-
-@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP ou município")
-def buscar_pontos(
-    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
-    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
-    raio_km: int = Query(10, description="Distância máxima, em km."),
-    material: str | None = Query(None, description="Chave de um item de /api/materiais."),
-) -> dict:
-    return _consultar(cep, municipio, raio_km, material)
-```
-
----
-
-## 7. A pagina consumindo o web service
-
-`backend/app/web/app.js`, linhas 29 a 76
+`web/app.js`
 
 ```js
 async function chamarApi(caminho) {

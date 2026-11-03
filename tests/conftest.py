@@ -6,7 +6,7 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 
-from app import config, pontos
+from app import config, overpass
 from app.main import app
 
 BUENO = {
@@ -36,8 +36,8 @@ def ambiente_limpo(tmp_path, monkeypatch):
     """Cada teste comeca com o cache vazio e sem lembrar de falhas do Overpass."""
     monkeypatch.setattr(config, "ARQUIVO_CACHE", tmp_path / "cache.db")
     monkeypatch.setattr(config, "TEMPO_LIMITE_OVERPASS", 1)
-    monkeypatch.setattr(pontos, "_ultima_falha_overpass", -math.inf)
-    monkeypatch.setattr("app.localizacao._ultima_chamada_nominatim", -math.inf)
+    monkeypatch.setattr(overpass, "_ultima_falha", -math.inf)
+    monkeypatch.setattr("app.localizacao.time.sleep", lambda _: None)
 
 
 @pytest.fixture
@@ -57,8 +57,7 @@ def apis_ok(apis):
     apis.get(config.URL_MUNICIPIOS).respond(json=MUNICIPIOS)
     apis.get(config.URL_VIACEP.format(cep="74230010")).respond(json=BUENO)
     apis.get(config.URL_NOMINATIM).respond(json=COORDENADAS_BUENO)
-    for servidor in config.SERVIDORES_OVERPASS:
-        apis.post(servidor).respond(json={"elements": []})
+    responder_overpass(apis, [])
     return apis
 
 

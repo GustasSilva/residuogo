@@ -1,6 +1,6 @@
 """Web service do ResiduoGO e pagina que o consome.
 
-Para executar, a partir da pasta `backend`:
+Para executar, a partir da raiz do projeto:
 
     uvicorn app.main:app --reload
 
@@ -12,11 +12,11 @@ import csv
 import io
 import logging
 
-from fastapi import FastAPI, Query, Response
+from fastapi import Depends, FastAPI, Query, Response
 from fastapi.staticfiles import StaticFiles
 
 from app import config, localizacao, pontos
-from app.errors import DadosInvalidos, registrar_handlers
+from app.erros import DadosInvalidos, registrar_handlers
 from app.materiais import MATERIAIS, para_saida
 from app.schemas import Material, Municipio, RespostaPontos
 
@@ -33,8 +33,14 @@ app = FastAPI(
 registrar_handlers(app)
 
 
-# APS-TRECHO 6: As rotas do web service
-def _consultar(cep: str | None, municipio: str | None, raio_km: int, material: str | None) -> dict:
+# APS-TRECHO 1: As rotas do web service
+def _consultar(
+    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
+    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
+    raio_km: int = Query(10, description="Distância máxima, em km."),
+    material: str | None = Query(None, description="Chave de um item de /api/materiais."),
+) -> dict:
+    """Valida os parametros e faz a busca. Serve as rotas em JSON e em CSV."""
     if bool(cep) == bool(municipio):
         raise DadosInvalidos("Informe o CEP ou o município, um dos dois.")
     if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
@@ -60,6 +66,20 @@ def _consultar(cep: str | None, municipio: str | None, raio_km: int, material: s
     }
 
 
+@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP ou município")
+def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
+    return resultado
+
+
+@app.get("/api/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
+def exportar_pontos(resultado: dict = Depends(_consultar)) -> Response:
+    return Response(
+        content=_planilha(resultado["pontos"]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.csv"'},
+    )
+
+
 @app.get("/api/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
 def listar_municipios() -> list[dict]:
     return localizacao.municipios()
@@ -68,33 +88,15 @@ def listar_municipios() -> list[dict]:
 @app.get("/api/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
 def listar_materiais() -> list[dict]:
     return para_saida(list(MATERIAIS))
-
-
-@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP ou município")
-def buscar_pontos(
-    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
-    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
-    raio_km: int = Query(10, description="Distância máxima, em km."),
-    material: str | None = Query(None, description="Chave de um item de /api/materiais."),
-) -> dict:
-    return _consultar(cep, municipio, raio_km, material)
 # APS-FIM
 
 
-@app.get("/api/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
-def exportar_pontos(
-    cep: str | None = None,
-    municipio: str | None = None,
-    raio_km: int = 10,
-    material: str | None = None,
-) -> Response:
-    resultado = _consultar(cep, municipio, raio_km, material)
-
+def _planilha(encontrados: list[dict]) -> str:
     saida = io.StringIO()
     # O Excel em portugues separa colunas por ponto e virgula.
     escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
     escritor.writerow(["Nome", "Tipo", "Endereço", "Materiais", "Distância (km)", "Latitude", "Longitude", "Fonte"])
-    for ponto in resultado["pontos"]:
+    for ponto in encontrados:
         materiais = ", ".join(item["rotulo"] for item in ponto["materiais"]) or "Não informado"
         escritor.writerow(
             [
@@ -109,11 +111,7 @@ def exportar_pontos(
             ]
         )
     # O BOM faz o Excel reconhecer os acentos.
-    return Response(
-        content="﻿" + saida.getvalue(),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.csv"'},
-    )
+    return "﻿" + saida.getvalue()
 
 
 def _celula_segura(texto: str) -> str:

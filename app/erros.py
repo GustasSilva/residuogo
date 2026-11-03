@@ -1,8 +1,4 @@
-"""Erros previstos e respostas de erro no formato da RFC 7807.
-
-Toda resposta de erro da API tem a mesma forma, servida como
-`application/problem+json`, e a tela so precisa saber ler esse formato.
-"""
+"""Erros previstos e respostas de erro no formato da RFC 7807."""
 
 import logging
 
@@ -38,7 +34,7 @@ class ServicoIndisponivel(ErroDaBusca):
     titulo = "Serviço externo indisponível"
 
 
-# APS-TRECHO 5: Todas as respostas de erro no mesmo formato (RFC 7807)
+# APS-TRECHO 7: Todas as respostas de erro no mesmo formato (RFC 7807)
 def _problema(request: Request, status: int, titulo: str, detalhe: str) -> JSONResponse:
     return JSONResponse(
         status_code=status,

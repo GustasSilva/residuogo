@@ -25,7 +25,7 @@ function mostrarMensagem(texto, ehErro = false) {
   mensagem.className = ehErro ? "erro" : "";
 }
 
-// APS-TRECHO 7: A pagina consumindo o web service
+// APS-TRECHO 8: A pagina consumindo o web service
 async function chamarApi(caminho) {
   let resposta;
   try {

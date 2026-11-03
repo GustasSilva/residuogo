@@ -1,14 +1,13 @@
-"""Enderecos das APIs externas, prazos de cache e tempos limite."""
+"""Enderecos das APIs externas, caminhos dos arquivos, prazos e tempos limite."""
 
 from pathlib import Path
 
-PASTA_APP = Path(__file__).resolve().parent
-PASTA_WEB = PASTA_APP / "web"
-PASTA_DADOS = PASTA_APP / "dados"
-
-ARQUIVO_CACHE = PASTA_APP.parent / "cache.db"
-ARQUIVO_ECOPONTOS = PASTA_DADOS / "ecopontos_goiania.json"
-ARQUIVO_COPIA_OSM = PASTA_DADOS / "osm_goias.json"
+RAIZ = Path(__file__).resolve().parent.parent
+PASTA_WEB = RAIZ / "web"
+ARQUIVO_CACHE = RAIZ / "cache.db"
+ARQUIVO_ECOPONTOS = RAIZ / "dados" / "ecopontos_goiania.json"
+ARQUIVO_COPIA_OSM = RAIZ / "dados" / "osm_goias.json"
+ARQUIVO_LIMITE_GOIAS = RAIZ / "dados" / "limite_goias.json"
 
 # O Nominatim exige um User-Agent que identifique a aplicacao.
 USER_AGENT = "ResiduoGO/2.0 (trabalho academico UNIP)"
@@ -30,13 +29,8 @@ TEMPO_LIMITE_OVERPASS = 25  # segundos que a busca espera pelo Overpass
 ESPERA_APOS_FALHA_OVERPASS = 120  # segundos sem tentar de novo depois de uma falha
 
 DIA = 24 * 60 * 60
-VALIDADE_MUNICIPIOS = 30 * DIA
-VALIDADE_CEP = 30 * DIA
-VALIDADE_COORDENADAS = 30 * DIA
+VALIDADE_ENDERECOS = 30 * DIA  # municipios, CEP e coordenadas quase nao mudam
 VALIDADE_PONTOS = 1 * DIA
 
 RAIO_MINIMO_KM = 1
 RAIO_MAXIMO_KM = 50
-
-# Retangulo em volta de Goias, para recusar uma coordenada obviamente errada.
-LIMITES_GOIAS = {"lat_min": -19.6, "lat_max": -12.3, "lon_min": -53.3, "lon_max": -45.8}

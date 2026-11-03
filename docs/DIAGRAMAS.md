@@ -10,31 +10,35 @@ flowchart LR
 
     subgraph servico["Web service REST (FastAPI)"]
         main["main.py<br/>rotas"]
+        pontos["pontos.py<br/>a busca"]
         localizacao["localizacao.py"]
-        pontos["pontos.py"]
+        overpass["overpass.py"]
         externo["externo.py<br/>HTTP e cache"]
         cache[("cache.db<br/>SQLite")]
-        dados["dados/<br/>ecopontos e cópia"]
+        dados["dados/<br/>ecopontos, cópia<br/>e contorno de Goiás"]
     end
 
     ibge["IBGE"]
     viacep["ViaCEP"]
     nominatim["Nominatim"]
-    overpass["Overpass"]
+    apiOverpass["Overpass"]
     tiles["Mapa do OpenStreetMap"]
 
     pagina -- "JSON e CSV" --> main
     pagina -- "imagens do mapa" --> tiles
     main --> localizacao
     main --> pontos
-    localizacao --> externo
-    pontos --> externo
+    pontos --> overpass
     pontos --> dados
+    localizacao --> dados
+    overpass --> dados
+    localizacao --> externo
+    overpass --> externo
     externo --> cache
     externo --> ibge
     externo --> viacep
     externo --> nominatim
-    externo --> overpass
+    externo --> apiOverpass
 ```
 
 ## Busca por CEP
@@ -56,7 +60,7 @@ sequenceDiagram
     N-->>S: latitude e longitude
     S->>O: pontos de coleta em volta
     O-->>S: elementos do mapa
-    S->>S: junta os ecopontos, tira duplicatas, filtra e ordena
+    S->>S: junta os ecopontos, tira o que está fora de Goiás e as duplicatas, filtra e ordena
     S-->>P: origem, pontos e avisos (JSON)
     P-->>Pessoa: lista e mapa
 ```
@@ -71,13 +75,10 @@ flowchart TD
     falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 25 s"]
     perguntar --> respondeu{"Algum respondeu?"}
     respondeu -- sim --> guardar["Guarda no cache e usa"]
-    respondeu -- não --> antiga{"Tem consulta<br/>antiga guardada?"}
-    falhou -- sim --> antiga
-    antiga -- sim --> aviso1["Usa a consulta antiga<br/>e avisa a data"]
-    antiga -- não --> copia["Usa a cópia de Goiás<br/>e avisa a data"]
-    usar --> final["Junta com os ecopontos de Goiânia"]
+    respondeu -- não --> copia["Usa a cópia de Goiás<br/>e avisa a data"]
+    falhou -- sim --> copia
+    usar --> final["Junta com os ecopontos de Goiânia<br/>e mantém só o que está em Goiás"]
     guardar --> final
-    aviso1 --> final
     copia --> final
 ```
 
