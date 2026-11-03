@@ -1,43 +1,27 @@
 """De onde a pessoa esta buscando: municipios (IBGE), CEP (ViaCEP) e coordenadas (Nominatim)."""
 
-import json
 import re
-import time
 import unicodedata
-from functools import lru_cache
 
 from app import config
 from app.erros import DadosInvalidos, NaoEncontrado, ServicoIndisponivel
-from app.externo import FalhaExterna, com_cache, obter_json
+from app.externo import FalhaExterna, com_cache, consultar_nominatim, obter_json
 
-# --- Limite de Goias ---
-
-
-@lru_cache(maxsize=1)
-def limite_de_goias() -> list[list[float]]:
-    """Contorno oficial do estado, baixado da API de malhas do IBGE."""
-    malha = json.loads(config.ARQUIVO_LIMITE_GOIAS.read_text("utf-8"))
-    return malha["features"][0]["geometry"]["coordinates"][0]
-
-
-def dentro_de_goias(latitude: float, longitude: float) -> bool:
-    """Traca uma linha a partir do ponto e conta os cruzamentos com o contorno: impar e dentro."""
-    contorno = limite_de_goias()
-    dentro = False
-    for (lon1, lat1), (lon2, lat2) in zip(contorno, contorno[1:]):
-        if (lat1 > latitude) != (lat2 > latitude):
-            cruzamento = lon1 + (latitude - lat1) * (lon2 - lon1) / (lat2 - lat1)
-            if longitude < cruzamento:
-                dentro = not dentro
-    return dentro
-
-
-# --- Municipios ---
+# Codigo do estado que o Nominatim devolve em `ISO3166-2-lvl4`.
+GOIAS = "BR-GO"
 
 
 def sem_acentos(texto: str) -> str:
     decomposto = unicodedata.normalize("NFKD", texto)
     return "".join(c for c in decomposto if not unicodedata.combining(c)).casefold()
+
+
+def em_goias(lugar: dict) -> bool:
+    """Le o estado em um resultado do Nominatim pedido com `addressdetails`."""
+    return lugar.get("address", {}).get("ISO3166-2-lvl4") == GOIAS
+
+
+# --- IBGE ---
 
 
 def municipios() -> list[dict[str, str]]:
@@ -72,6 +56,20 @@ def _municipio_pelo_nome(nome: str) -> dict | None:
     return next((municipio for municipio in lista if sem_acentos(municipio["nome"]) == procurado), None)
 
 
+def contorno_de_goias() -> dict:
+    """Contorno oficial do estado, em GeoJSON, para desenhar no mapa."""
+    return com_cache(
+        "contorno-go",
+        config.VALIDADE_ENDERECOS,
+        "IBGE",
+        lambda: obter_json(
+            config.URL_CONTORNO_GOIAS,
+            "IBGE",
+            {"formato": "application/vnd.geo+json", "qualidade": "intermediaria"},
+        ),
+    )
+
+
 # --- CEP ---
 
 
@@ -97,54 +95,43 @@ def _endereco_do_cep(cep: str) -> dict:
     return endereco
 
 
-# --- Coordenadas ---
+# --- Coordenadas (Nominatim) ---
 
 
-def _coordenadas_nominatim(**busca: str) -> list[float] | None:
-    """Coordenadas da busca, ou None se o Nominatim nao achou nada dentro de Goias."""
-
-    def consultar() -> list[float]:
-        time.sleep(1)  # o Nominatim pede no maximo uma chamada por segundo
-        # Ele recusa `q` junto com campos estruturados como `state`.
-        filtros = busca if "q" in busca else {**busca, "state": "Goiás"}
-        params = {**filtros, "format": "jsonv2", "limit": 1, "countrycodes": "br"}
-        resultado = obter_json(config.URL_NOMINATIM, "Nominatim", params)
-        return [float(resultado[0]["lat"]), float(resultado[0]["lon"])] if resultado else []
-
-    chave = "nominatim:" + "|".join(f"{k}={v}" for k, v in sorted(busca.items()))
-    coordenadas = com_cache(chave, config.VALIDADE_ENDERECOS, "Nominatim", consultar)
-    return coordenadas if coordenadas and dentro_de_goias(*coordenadas) else None
-
-
-def _lugares_nominatim(texto: str) -> list[list]:
-    """Lugares encontrados para um texto livre, como [latitude, longitude, nome]."""
-
-    def consultar() -> list[list]:
-        time.sleep(1)  # o Nominatim pede no maximo uma chamada por segundo
-        params = {
-            "q": texto,
-            "viewbox": config.CAIXA_DE_GOIAS,
-            "bounded": 1,
-            "format": "jsonv2",
-            "limit": 5,
-            "countrycodes": "br",
-        }
-        resultado = obter_json(config.URL_NOMINATIM, "Nominatim", params)
-        return [[float(lugar["lat"]), float(lugar["lon"]), lugar["display_name"]] for lugar in resultado]
-
-    return com_cache(f"lugar:{sem_acentos(texto)}", config.VALIDADE_ENDERECOS, "Nominatim", consultar)
+def _coordenadas(**busca: str) -> list[float] | None:
+    """Coordenadas de uma busca por rua, bairro ou cidade, ou None se nada foi achado em Goias."""
+    # O Nominatim recusa `q` junto com campos estruturados como `state`.
+    filtros = busca if "q" in busca else {**busca, "state": "Goiás"}
+    chave = "endereco:" + "|".join(f"{k}={v}" for k, v in sorted(busca.items()))
+    lugares = com_cache(
+        chave,
+        config.VALIDADE_ENDERECOS,
+        "Nominatim",
+        lambda: consultar_nominatim("search", {**filtros, "limit": 1, "countrycodes": "br", "addressdetails": 1}),
+    )
+    if lugares and em_goias(lugares[0]):
+        return [float(lugares[0]["lat"]), float(lugares[0]["lon"])]
+    return None
 
 
-def _centro_do_municipio(codigo: str) -> list[float]:
-    def consultar() -> list[float]:
-        bruto = obter_json(config.URL_METADADOS_MUNICIPIO.format(codigo=codigo), "IBGE")
-        try:
-            centro = bruto[0]["centroide"]
-            return [centro["latitude"], centro["longitude"]]
-        except (KeyError, IndexError, TypeError) as erro:
-            raise FalhaExterna("IBGE: metadados em formato inesperado") from erro
-
-    return com_cache(f"centro-ibge:{codigo}", config.VALIDADE_ENDERECOS, "IBGE", consultar)
+def _lugares(texto: str) -> list[dict]:
+    """Lugares encontrados para um texto livre, como bairro, endereco ou ponto de referencia."""
+    return com_cache(
+        f"texto:{sem_acentos(texto)}",
+        config.VALIDADE_ENDERECOS,
+        "Nominatim",
+        lambda: consultar_nominatim(
+            "search",
+            {
+                "q": texto,
+                "viewbox": config.CAIXA_DE_GOIAS,
+                "bounded": 1,
+                "limit": 5,
+                "countrycodes": "br",
+                "addressdetails": 1,
+            },
+        ),
+    )
 
 
 # --- Ponto de partida da busca ---
@@ -160,13 +147,13 @@ def origem_por_texto(texto: str) -> dict:
     municipio = _municipio_pelo_nome(texto)
     if municipio:
         cidade = municipio["nome"]
-        return _origem(f"{cidade} - GO", [("município", {"city": cidade})], municipio["codigo"])
+        return _origem(f"{cidade} - GO", [("município", {"city": cidade})])
 
     return _origem_por_lugar(texto)
 
 
 def _origem_por_cep(cep: str) -> dict:
-    """Tenta a rua, depois o bairro, depois a cidade."""
+    """O ViaCEP nao informa coordenadas: o Nominatim tenta a rua, depois o bairro, depois a cidade."""
     endereco = _endereco_do_cep(cep)
     cidade = endereco["localidade"]
     rua = endereco.get("logradouro", "")
@@ -180,38 +167,49 @@ def _origem_por_cep(cep: str) -> dict:
     tentativas.append(("município", {"city": cidade}))
 
     descricao = ", ".join(parte for parte in (rua, bairro, f"{cidade} - GO") if parte)
-    return _origem(descricao, tentativas, endereco["ibge"])
+    return _origem(descricao, tentativas)
 
 
 def _origem_por_lugar(texto: str) -> dict:
-    for latitude, longitude, nome in _lugares_nominatim(texto):
-        if dentro_de_goias(latitude, longitude):
+    for lugar in _lugares(texto):
+        if em_goias(lugar):
             # O nome vem como "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil".
-            descricao = nome.split(", Goiás, Região")[0] + " - GO"
+            descricao = lugar["display_name"].split(", Goiás, Região")[0] + " - GO"
+            latitude, longitude = float(lugar["lat"]), float(lugar["lon"])
             return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": "lugar"}
     raise NaoEncontrado(f'Não encontramos "{texto}" em Goiás. Tente incluir a cidade, como "Setor Bueno, Goiânia".')
 
 
-def _origem(descricao: str, tentativas: list[tuple[str, dict]], codigo_ibge: str) -> dict:
-    """Usa a primeira coordenada encontrada; sem nenhuma, o centro do municipio pelo IBGE."""
-    coordenadas, precisao = None, "município"
-    for precisao_da_busca, busca in tentativas:
-        try:
-            coordenadas = _coordenadas_nominatim(**busca)
-        except ServicoIndisponivel:
-            break
+def _origem(descricao: str, tentativas: list[tuple[str, dict]]) -> dict:
+    """Usa a primeira tentativa que o Nominatim encontrar em Goias."""
+    for precisao, busca in tentativas:
+        coordenadas = _coordenadas(**busca)
         if coordenadas:
-            precisao = precisao_da_busca
-            break
-
-    latitude, longitude = coordenadas or _centro_do_municipio(codigo_ibge)
-    return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
+            latitude, longitude = coordenadas
+            return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
+    raise NaoEncontrado(f"Não encontramos {descricao} no mapa.")
 # APS-FIM
 
 
 def origem_por_coordenadas(latitude: float | None, longitude: float | None) -> dict:
+    """Ponto clicado no mapa. O Nominatim informa em que estado ele fica."""
     if latitude is None or longitude is None:
         raise DadosInvalidos("Informe a latitude e a longitude do ponto.")
-    if not dentro_de_goias(latitude, longitude):
+    if not _no_retangulo_de_goias(latitude, longitude):
+        raise DadosInvalidos("Esse local fica fora de Goiás. Escolha um ponto dentro do estado.")
+
+    lugar = com_cache(
+        f"estado:{latitude},{longitude}",
+        config.VALIDADE_ENDERECOS,
+        "Nominatim",
+        lambda: consultar_nominatim("reverse", {"lat": latitude, "lon": longitude, "zoom": 5}),
+    )
+    if not em_goias(lugar):
         raise DadosInvalidos("Esse local fica fora de Goiás. Escolha um ponto dentro do estado.")
     return {"descricao": "Ponto escolhido no mapa", "latitude": latitude, "longitude": longitude, "precisao": "mapa"}
+
+
+def _no_retangulo_de_goias(latitude: float, longitude: float) -> bool:
+    """Descarta sem consultar a API o que esta claramente longe (e tambem NaN e infinito)."""
+    oeste, norte, leste, sul = map(float, config.CAIXA_DE_GOIAS.split(","))
+    return sul <= latitude <= norte and oeste <= longitude <= leste

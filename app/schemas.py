@@ -31,8 +31,6 @@ class Ponto(BaseModel):
     materiais: list[Material]
     telefone: str
     horario: str
-    observacao: str
-    fonte: str
 
 
 class RespostaPontos(BaseModel):
@@ -41,5 +39,4 @@ class RespostaPontos(BaseModel):
     material: str | None
     total: int
     pontos: list[Ponto]
-    avisos: list[str]
-    fora_do_raio: bool  # nada no raio: a lista traz os mais proximos do estado
+    fora_do_raio: bool  # nada no raio: a lista traz os mais proximos numa area maior

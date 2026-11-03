@@ -6,7 +6,6 @@ __pycache__/
 
 # Gerados ao rodar
 cache.db
-copia_osm_em_andamento.json
 
 # Editores e sistema
 .vscode/

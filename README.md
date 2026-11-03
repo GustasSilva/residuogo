@@ -8,19 +8,18 @@ Trabalho de APS do curso de Ciência da Computação da UNIP. O enunciado pede w
 
 ## Como funciona
 
-O projeto tem um web service REST próprio, que reúne dados de APIs externas, e uma página web que consome esse serviço.
+O projeto tem um web service REST próprio, que consulta APIs públicas a cada busca, e uma página web que consome esse serviço. Nenhum dado de endereço ou de ponto de coleta fica guardado no código: tudo vem das APIs.
 
 | API externa | Para que é usada |
 |---|---|
 | IBGE Localidades | municípios de Goiás, usados nas sugestões do campo de busca |
-| IBGE Malhas | centro do município, quando o Nominatim não responde |
+| IBGE Malhas | contorno oficial de Goiás, desenhado no mapa |
 | ViaCEP | endereço a partir do CEP |
-| Nominatim (OpenStreetMap) | coordenadas de um endereço, bairro ou lugar |
-| Overpass (OpenStreetMap) | pontos de coleta perto das coordenadas |
+| Nominatim (OpenStreetMap) | coordenadas de um endereço, bairro ou lugar; os pontos de coleta em volta; o estado de um ponto clicado no mapa |
 
 ## Como rodar
 
-Testado com Python 3.13. No PowerShell, a partir da raiz do projeto:
+Testado com Python 3.11 e 3.13. No PowerShell, a partir da raiz do projeto:
 
 ```
 python -m venv .venv
@@ -54,34 +53,38 @@ uvicorn app.main:app --reload
 Parâmetros de `/api/pontos`: `local` (CEP, município, bairro ou endereço) ou `lat` e `lon`, mais `raio_km` (de 1 a 50, padrão 10) e `material`.
 
 ```
-GET /api/pontos?local=74230-010&raio_km=10&material=pneus
+GET /api/pontos?lat=-16.59&lon=-49.33&raio_km=2&material=eletronicos
 ```
 
 ```json
 {
   "origem": {
-    "descricao": "Avenida T 15, Setor Bueno, Goiânia - GO",
-    "latitude": -16.7068739,
-    "longitude": -49.2742207,
-    "precisao": "endereço"
+    "descricao": "Ponto escolhido no mapa",
+    "latitude": -16.59,
+    "longitude": -49.33,
+    "precisao": "mapa"
   },
-  "raio_km": 10,
-  "material": "pneus",
+  "raio_km": 2,
+  "material": "eletronicos",
   "total": 1,
   "pontos": [
     {
-      "nome": "Ecoponto Faiçalville",
-      "tipo": "Ecoponto",
-      "distancia_km": 5.8,
-      "materiais": [{ "chave": "pneus", "rotulo": "Pneus" }]
+      "nome": "SukaTech",
+      "tipo": "Contêiner de coleta",
+      "endereco": "Rua BF-28, Bairro Floresta, Goiânia",
+      "latitude": -16.5919271,
+      "longitude": -49.3362115,
+      "distancia_km": 0.7,
+      "materiais": [{ "chave": "eletronicos", "rotulo": "Eletrônicos e eletrodomésticos" }],
+      "telefone": "",
+      "horario": ""
     }
   ],
-  "avisos": [],
   "fora_do_raio": false
 }
 ```
 
-Se não houver nenhum ponto no raio, a resposta traz os 3 mais próximos do estado, com `fora_do_raio` igual a `true`.
+Se não houver nenhum ponto no raio, a resposta traz os 3 mais próximos em até 250 km, com `fora_do_raio` igual a `true`.
 
 Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 
@@ -89,30 +92,24 @@ Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 |---|---|
 | CEP, distância ou material inválido, CEP ou ponto fora de Goiás | 422 |
 | CEP ou lugar não encontrado em Goiás | 404 |
-| API externa necessária fora do ar, sem cache | 503 |
+| API externa necessária fora do ar, sem resposta guardada | 503 |
 
 ## Quando uma API externa cai
 
-Os servidores públicos do Overpass ficam sobrecarregados com frequência, então a busca foi feita para continuar sem eles:
+1. As respostas das APIs ficam guardadas em um cache em arquivo (`cache.db`): 30 dias para municípios, CEP, coordenadas e contorno, e 1 dia para os pontos. Uma busca repetida não consulta de novo.
+2. Se uma API não responde, a busca usa a última resposta guardada, mesmo vencida.
+3. Sem resposta e sem nada guardado, o serviço responde 503 com o nome da API que falhou.
+4. Sem o IBGE, o campo continua aceitando o nome da cidade: o Nominatim a encontra como um lugar qualquer.
 
-1. As respostas externas ficam guardadas em um cache em arquivo (`cache.db`). Buscas próximas aproveitam a mesma consulta.
-2. A busca pergunta aos três servidores do Overpass ao mesmo tempo e espera até 8 segundos.
-3. Se nenhum responder a tempo, usa a cópia dos dados de Goiás que fica no projeto e avisa na tela. Uma resposta atrasada ainda entra no cache, para a próxima busca.
-4. Depois de uma falha, passa 2 minutos sem tentar o Overpass.
-5. Sem o Nominatim, as distâncias contam a partir do centro do município, informado pelo IBGE.
-
-Para atualizar a cópia, que fica em `dados/osm_goias.json`:
-
-```
-python -m scripts.atualizar_copia_osm
-```
+Antes de uma apresentação, vale fazer uma vez as buscas que serão mostradas: elas ficam no cache e não dependem mais das APIs. As imagens do mapa continuam vindo da internet.
 
 ## De onde vêm os pontos
 
-- **OpenStreetMap:** o mapa é aberto e feito por voluntários, então pode faltar ponto e a maioria não informa os materiais aceitos. Nesses casos, a tela mostra "Materiais aceitos não informados". Aterros e lixões ficam de fora, porque não recebem entrega de quem procura um ponto. As centrais de embalagens de agrotóxicos são reconhecidas pelo nome.
-- **Ecopontos de Goiânia:** os cinco ecopontos permanentes ficam em `dados/ecopontos_goiania.json`. Não foi encontrada uma API oficial, então os dados vieram da [Prefeitura de Goiânia](http://gyncoletaseletiva.goiania.go.gov.br/ecoponto/) e da imprensa ([Tribuna do Planalto, 2024](https://tribunadoplanalto.com.br/prefeitura-disponibiliza-ecoponto-para-descarte-na-regiao-oeste/) e [Jornal Opção](https://www.jornalopcao.com.br/ultimas-noticias/entulho-moveis-e-pneus-goiania-podera-ampliar-rede-de-ecopontos-para-23-unidades-846959/)). Eles não foram conferidos um a um, e a página pede para confirmar o funcionamento antes de ir.
-
-Só aparecem pontos dentro de Goiás, conferidos com o contorno oficial do estado, da API de malhas do IBGE (`dados/limite_goias.json`).
+- **OpenStreetMap, pelo Nominatim:** a cada busca, o serviço pergunta ao Nominatim pelos lugares marcados como ponto de reciclagem (`amenity=recycling`) dentro da área da busca e pelos ecopontos do estado, encontrados pelo nome. O parâmetro `extratags` traz junto os materiais aceitos, o horário e o telefone, quando o mapa tem essas informações.
+- **Só Goiás:** o Nominatim informa o estado de cada lugar, e só ficam os de Goiás. O contorno desenhado no mapa vem da API de malhas do IBGE.
+- **O que fica de fora:** aterros e lixões, porque não recebem entrega de quem procura um ponto, e áreas marcadas como privadas. As centrais de embalagens de agrotóxicos são reconhecidas pelo nome.
+- **Limitações:** o mapa é aberto e feito por voluntários, então pode faltar ponto e a maioria não informa os materiais aceitos. Nesses casos, a tela mostra "Materiais aceitos não informados". O Nominatim é um buscador e devolve no máximo 50 lugares por consulta; em Goiás, com poucos pontos mapeados, isso não fez diferença nos testes.
+- **Outras fontes:** não foi encontrada API pública com os pontos de coleta de Goiás. O portal de dados abertos do estado não tem esses dados, nem a Prefeitura de Goiânia, e as entidades de logística reversa só têm buscadores nos próprios sites. Um ponto que esteja faltando pode ser cadastrado no OpenStreetMap e, alguns minutos depois, passa a aparecer na busca.
 
 As cores dos materiais na tela seguem a Resolução CONAMA 275/2001. Os itens que ela não cobre aparecem em cinza.
 
@@ -133,17 +130,15 @@ Os testes não usam a internet: as APIs externas são simuladas.
 ```
 app/
   main.py          rotas do web service
-  pontos.py        a busca: junta as fontes, filtra e ordena
-  overpass.py      pontos do OpenStreetMap
-  localizacao.py   entende o local digitado, coordenadas e limite de Goiás
+  pontos.py        a busca dos pontos: consulta o Nominatim, filtra e ordena
+  localizacao.py   entende o local digitado ou clicado (IBGE, ViaCEP e Nominatim)
   materiais.py     materiais e etiquetas do OpenStreetMap
   externo.py       chamadas HTTP e cache
   erros.py         respostas de erro (RFC 7807)
   schemas.py       formato das respostas
   config.py        endereços, prazos e tempos limite
 web/               página (HTML, CSS e JavaScript)
-dados/             ecopontos, cópia do OpenStreetMap e contorno de Goiás
-scripts/           atualização da cópia e extração de trechos
+scripts/           extração dos trechos de código para o relatório
 tests/
 docs/              diagramas, telas e trechos para o relatório
 ```

@@ -13,7 +13,7 @@ import io
 import logging
 
 from fastapi import Depends, FastAPI, Query, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, localizacao, pontos
@@ -28,7 +28,7 @@ app = FastAPI(
     version="2.0.0",
     description=(
         "Consulta de pontos de coleta de resíduos no estado de Goiás. Reúne dados do IBGE, "
-        "do ViaCEP e do OpenStreetMap (Nominatim e Overpass). Os erros seguem a RFC 7807."
+        "do ViaCEP e do OpenStreetMap (pelo Nominatim). Os erros seguem a RFC 7807."
     ),
 )
 registrar_handlers(app)
@@ -92,17 +92,17 @@ def listar_materiais() -> list[dict]:
     return para_saida(list(MATERIAIS))
 
 
-@app.get("/api/goias", summary="Contorno oficial de Goiás, em GeoJSON")
-def contorno_de_goias() -> FileResponse:
-    return FileResponse(config.ARQUIVO_LIMITE_GOIAS, media_type="application/geo+json")
+@app.get("/api/goias", summary="Contorno oficial de Goiás (IBGE), em GeoJSON")
+def contorno_de_goias() -> JSONResponse:
+    return JSONResponse(localizacao.contorno_de_goias(), media_type="application/geo+json")
 # APS-FIM
 
 
 def _planilha(encontrados: list[dict]) -> str:
     saida = io.StringIO()
-    # O Excel em portugues separa colunas por ponto e virgula.
+    # O Excel em portugues separa colunas por ponto e virgula e decimais por virgula.
     escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
-    escritor.writerow(["Nome", "Tipo", "Endereço", "Materiais", "Distância (km)", "Latitude", "Longitude", "Fonte"])
+    escritor.writerow(["Nome", "Tipo", "Endereço", "Materiais", "Distância (km)", "Latitude", "Longitude"])
     for ponto in encontrados:
         materiais = ", ".join(item["rotulo"] for item in ponto["materiais"]) or "Não informado"
         escritor.writerow(
@@ -111,14 +111,17 @@ def _planilha(encontrados: list[dict]) -> str:
                 ponto["tipo"],
                 _celula_segura(ponto["endereco"]),
                 materiais,
-                str(ponto["distancia_km"]).replace(".", ","),
-                ponto["latitude"],
-                ponto["longitude"],
-                ponto["fonte"],
+                _decimal(ponto["distancia_km"]),
+                _decimal(ponto["latitude"]),
+                _decimal(ponto["longitude"]),
             ]
         )
     # O BOM faz o Excel reconhecer os acentos.
     return "﻿" + saida.getvalue()
+
+
+def _decimal(numero: float) -> str:
+    return str(numero).replace(".", ",")
 
 
 def _celula_segura(texto: str) -> str:

@@ -10,35 +10,27 @@ flowchart LR
 
     subgraph servico["Web service REST (FastAPI)"]
         main["main.py<br/>rotas"]
-        pontos["pontos.py<br/>a busca"]
-        localizacao["localizacao.py"]
-        overpass["overpass.py"]
+        pontos["pontos.py<br/>a busca dos pontos"]
+        localizacao["localizacao.py<br/>o local da busca"]
         externo["externo.py<br/>HTTP e cache"]
         cache[("cache.db<br/>SQLite")]
-        dados["dados/<br/>ecopontos, cópia<br/>e contorno de Goiás"]
     end
 
-    ibge["IBGE"]
+    ibge["IBGE<br/>municípios e contorno"]
     viacep["ViaCEP"]
-    nominatim["Nominatim"]
-    apiOverpass["Overpass"]
+    nominatim["Nominatim<br/>(OpenStreetMap)"]
     tiles["Mapa do OpenStreetMap"]
 
     pagina -- "JSON e CSV" --> main
     pagina -- "imagens do mapa" --> tiles
     main --> localizacao
     main --> pontos
-    pontos --> overpass
-    pontos --> dados
-    localizacao --> dados
-    overpass --> dados
     localizacao --> externo
-    overpass --> externo
+    pontos --> externo
     externo --> cache
     externo --> ibge
     externo --> viacep
     externo --> nominatim
-    externo --> apiOverpass
 ```
 
 ## Busca por CEP
@@ -50,18 +42,17 @@ sequenceDiagram
     participant S as Web service
     participant V as ViaCEP
     participant N as Nominatim
-    participant O as Overpass
 
     Pessoa->>P: digita o CEP, escolhe material e distância
     P->>S: GET /api/pontos?local=...&raio_km=...&material=...
     S->>V: endereço do CEP
-    V-->>S: rua, bairro, cidade e código IBGE
-    S->>N: coordenadas do endereço
+    V-->>S: rua, bairro e cidade
+    S->>N: coordenadas da rua
     N-->>S: latitude e longitude
-    S->>O: pontos de coleta em volta
-    O-->>S: elementos do mapa
-    S->>S: junta os ecopontos, tira o que está fora de Goiás e as duplicatas, filtra e ordena
-    S-->>P: origem, pontos e avisos (JSON)
+    S->>N: pontos de reciclagem na área e ecopontos do estado
+    N-->>S: lugares do mapa, com estado, endereço e etiquetas
+    S->>S: mantém os de Goiás que recebem entrega, filtra o material, calcula a distância e ordena
+    S-->>P: origem e pontos (JSON)
     P-->>Pessoa: lista e mapa
 ```
 
@@ -69,20 +60,19 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    inicio["Busca em uma coordenada"] --> cache{"Tem consulta<br/>de menos de 1 dia?"}
-    cache -- sim --> usar["Usa a consulta guardada"]
-    cache -- não --> falhou{"Overpass falhou<br/>nos últimos 2 minutos?"}
-    falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 8 s"]
-    perguntar --> respondeu{"Algum respondeu?"}
+    inicio["Busca em uma coordenada"] --> cache{"Esta área foi consultada<br/>há menos de 1 dia?"}
+    cache -- sim --> usar["Usa a resposta guardada"]
+    cache -- não --> perguntar["Nominatim: pontos de reciclagem na área<br/>e ecopontos do estado"]
+    perguntar --> respondeu{"Respondeu?"}
     respondeu -- sim --> guardar["Guarda no cache e usa"]
-    respondeu -- não --> copia["Usa a cópia de Goiás<br/>e avisa a data"]
-    falhou -- sim --> copia
-    usar --> final["Junta com os ecopontos de Goiânia<br/>e mantém só o que está em Goiás"]
-    guardar --> final
-    copia --> final
-    final --> raio{"Tem ponto na<br/>distância escolhida?"}
+    respondeu -- não --> antiga{"Tem resposta antiga<br/>guardada?"}
+    antiga -- sim --> usar
+    antiga -- não --> erro["Erro 503"]
+    usar --> filtrar["Mantém só os de Goiás que recebem entrega,<br/>filtra o material e calcula a distância"]
+    guardar --> filtrar
+    filtrar --> raio{"Tem ponto na<br/>distância escolhida?"}
     raio -- sim --> lista["Mostra os pontos do raio"]
-    raio -- não --> proximos["Mostra os 3 mais próximos do estado"]
+    raio -- não --> proximos["Busca de novo em 250 km<br/>e mostra os 3 mais próximos"]
 ```
 
 ## Do texto digitado até as coordenadas
@@ -94,7 +84,7 @@ flowchart TD
     tipo -- "nome de um município" --> cidade
     tipo -- "outro texto" --> lugar["Nominatim: procura dentro de Goiás"]
     lugar --> achou{"Achou?"}
-    achou -- sim --> r4["Usa o lugar encontrado"]
+    achou -- sim --> r4["Precisão: lugar"]
     achou -- não --> erro["Erro 404, com uma dica"]
     viacep --> rua{"Nominatim achou a rua?"}
     rua -- sim --> r1["Precisão: endereço"]
@@ -102,6 +92,5 @@ flowchart TD
     bairro -- sim --> r2["Precisão: bairro"]
     bairro -- não --> cidade{"Achou a cidade?"}
     cidade -- sim --> r3["Precisão: município"]
-    cidade -- não --> ibge["Centro do município, pelo IBGE"]
-    ibge --> r3
+    cidade -- não --> erro
 ```

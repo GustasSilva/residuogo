@@ -2,7 +2,7 @@
 
 Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
-8 trechos, 282 linhas. O limite é de cerca de 380 linhas.
+8 trechos, 290 linhas. O limite é de cerca de 380 linhas.
 
 ## 1. As rotas do web service
 
@@ -66,9 +66,9 @@ def listar_materiais() -> list[dict]:
     return para_saida(list(MATERIAIS))
 
 
-@app.get("/api/goias", summary="Contorno oficial de Goiás, em GeoJSON")
-def contorno_de_goias() -> FileResponse:
-    return FileResponse(config.ARQUIVO_LIMITE_GOIAS, media_type="application/geo+json")
+@app.get("/api/goias", summary="Contorno oficial de Goiás (IBGE), em GeoJSON")
+def contorno_de_goias() -> JSONResponse:
+    return JSONResponse(localizacao.contorno_de_goias(), media_type="application/geo+json")
 ```
 
 ## 2. A busca dos pontos de coleta
@@ -76,19 +76,31 @@ def contorno_de_goias() -> FileResponse:
 `app/pontos.py`
 
 ```python
-def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> dict:
-    """Pontos dentro do raio. Sem nenhum, os mais proximos de todo o estado."""
-    elementos, aviso = overpass.elementos_perto(latitude, longitude, raio_km)
-    avisos = [aviso] if aviso else []
+def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, material: str | None) -> list[dict]:
+    """Pontos ate raio_km que servem para o material, do mais perto para o mais longe.
 
-    ordenados = _pontos_ordenados(latitude, longitude, elementos, material)
-    no_raio = [ponto for ponto in ordenados if ponto["distancia_km"] <= raio_km]
+    Com um material escolhido, tambem entram os pontos que nao informam o que
+    aceitam: a tela avisa a pessoa para confirmar antes de ir.
+    """
+    resultado = []
+    for ponto in map(ponto_do_lugar, _lugares(_caixa(latitude, longitude, raio_km))):
+        if not ponto or (material and ponto["materiais"] and material not in ponto["materiais"]):
+            continue
+        distancia = round(distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"]), 1)
+        if distancia <= raio_km:
+            resultado.append({**ponto, "distancia_km": distancia, "materiais": para_saida(ponto["materiais"])})
+    return sorted(resultado, key=lambda ponto: ponto["distancia_km"])
+
+
+def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> dict:
+    """Pontos dentro do raio. Sem nenhum, os mais proximos numa area maior."""
+    no_raio = _pontos_ordenados(latitude, longitude, raio_km, material)
     if no_raio:
-        return {"pontos": no_raio, "avisos": avisos, "fora_do_raio": False}
+        return {"pontos": no_raio, "fora_do_raio": False}
 
     # Goias tem poucos pontos mapeados, entao um raio vazio e comum.
-    todos = _pontos_ordenados(latitude, longitude, overpass.elementos_de_goias(), material)
-    return {"pontos": todos[:QUANTOS_MAIS_PROXIMOS], "avisos": avisos, "fora_do_raio": True}
+    mais_proximos = _pontos_ordenados(latitude, longitude, RAIO_DOS_MAIS_PROXIMOS_KM, material)
+    return {"pontos": mais_proximos[:QUANTOS_MAIS_PROXIMOS], "fora_do_raio": True}
 ```
 
 ## 3. Do texto digitado ate as coordenadas
@@ -105,13 +117,13 @@ def origem_por_texto(texto: str) -> dict:
     municipio = _municipio_pelo_nome(texto)
     if municipio:
         cidade = municipio["nome"]
-        return _origem(f"{cidade} - GO", [("município", {"city": cidade})], municipio["codigo"])
+        return _origem(f"{cidade} - GO", [("município", {"city": cidade})])
 
     return _origem_por_lugar(texto)
 
 
 def _origem_por_cep(cep: str) -> dict:
-    """Tenta a rua, depois o bairro, depois a cidade."""
+    """O ViaCEP nao informa coordenadas: o Nominatim tenta a rua, depois o bairro, depois a cidade."""
     endereco = _endereco_do_cep(cep)
     cidade = endereco["localidade"]
     rua = endereco.get("logradouro", "")
@@ -125,78 +137,80 @@ def _origem_por_cep(cep: str) -> dict:
     tentativas.append(("município", {"city": cidade}))
 
     descricao = ", ".join(parte for parte in (rua, bairro, f"{cidade} - GO") if parte)
-    return _origem(descricao, tentativas, endereco["ibge"])
+    return _origem(descricao, tentativas)
 
 
 def _origem_por_lugar(texto: str) -> dict:
-    for latitude, longitude, nome in _lugares_nominatim(texto):
-        if dentro_de_goias(latitude, longitude):
+    for lugar in _lugares(texto):
+        if em_goias(lugar):
             # O nome vem como "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil".
-            descricao = nome.split(", Goiás, Região")[0] + " - GO"
+            descricao = lugar["display_name"].split(", Goiás, Região")[0] + " - GO"
+            latitude, longitude = float(lugar["lat"]), float(lugar["lon"])
             return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": "lugar"}
     raise NaoEncontrado(f'Não encontramos "{texto}" em Goiás. Tente incluir a cidade, como "Setor Bueno, Goiânia".')
 
 
-def _origem(descricao: str, tentativas: list[tuple[str, dict]], codigo_ibge: str) -> dict:
-    """Usa a primeira coordenada encontrada; sem nenhuma, o centro do municipio pelo IBGE."""
-    coordenadas, precisao = None, "município"
-    for precisao_da_busca, busca in tentativas:
-        try:
-            coordenadas = _coordenadas_nominatim(**busca)
-        except ServicoIndisponivel:
-            break
+def _origem(descricao: str, tentativas: list[tuple[str, dict]]) -> dict:
+    """Usa a primeira tentativa que o Nominatim encontrar em Goias."""
+    for precisao, busca in tentativas:
+        coordenadas = _coordenadas(**busca)
         if coordenadas:
-            precisao = precisao_da_busca
-            break
-
-    latitude, longitude = coordenadas or _centro_do_municipio(codigo_ibge)
-    return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
+            latitude, longitude = coordenadas
+            return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
+    raise NaoEncontrado(f"Não encontramos {descricao} no mapa.")
 ```
 
-## 4. De onde vem os pontos, e o que acontece quando o Overpass cai
+## 4. De onde vem os pontos
 
-`app/overpass.py`
+`app/pontos.py`
 
 ```python
-def elementos_perto(latitude: float, longitude: float, raio_km: int) -> tuple[list[dict], str]:
-    """Devolve os elementos do mapa e um aviso, quando eles vierem da copia."""
-    global _ultima_falha
-    celula = round(latitude, 1), round(longitude, 1)
-    chave = f"overpass:{celula[0]},{celula[1]},{raio_km}"
-    guardado = ler_do_cache(chave)
-    if guardado and time.time() - guardado[1] < config.VALIDADE_PONTOS:
-        return guardado[0], ""
+def _caixa(latitude: float, longitude: float, raio_km: float) -> str:
+    """Retangulo em volta do circulo da busca (oeste, norte, leste, sul). Um grau de latitude tem 111 km."""
+    graus_lat = raio_km / 111
+    graus_lon = raio_km / (111 * math.cos(math.radians(latitude)))
+    return f"{longitude - graus_lon:.4f},{latitude + graus_lat:.4f},{longitude + graus_lon:.4f},{latitude - graus_lat:.4f}"
 
-    # Logo depois de uma falha nao adianta esperar o tempo limite de novo.
-    if time.monotonic() - _ultima_falha >= config.ESPERA_APOS_FALHA_OVERPASS:
-        try:
-            return _perguntar_aos_servidores(chave, *celula, raio_km + FOLGA_DA_CELULA_KM), ""
-        except FalhaExterna:
-            _ultima_falha = time.monotonic()
 
-    copia = _copia_de_reserva()
-    data = date.fromisoformat(copia["gerado_em"]).strftime("%d/%m/%Y")
-    return copia["elementos"], f"O OpenStreetMap não respondeu. Estes pontos são da cópia de {data}."
+def _procurar(termo: str, caixa: str) -> list[dict]:
+    """Lugares do OpenStreetMap dentro da caixa. `extratags` traz as etiquetas, como os materiais."""
+    return com_cache(
+        f"pontos:{termo}:{caixa}",
+        config.VALIDADE_PONTOS,
+        "Nominatim",
+        lambda: consultar_nominatim(
+            "search",
+            {"q": termo, "viewbox": caixa, "bounded": 1, "limit": 50, "addressdetails": 1, "extratags": 1},
+        ),
+    )
+
+
+def _lugares(caixa: str) -> list[dict]:
+    """Pontos de reciclagem da area e ecopontos do estado, sem repetir o mesmo lugar."""
+    encontrados = [
+        *_procurar("[amenity=recycling]", caixa),
+        # Os ecopontos sao poucos e nem sempre tem a etiqueta de reciclagem: vem pelo nome.
+        *_procurar("ecoponto", config.CAIXA_DE_GOIAS),
+    ]
+    return list({(lugar["osm_type"], lugar["osm_id"]): lugar for lugar in encontrados}.values())
 ```
 
-## 5. Do dado cru do OpenStreetMap para um ponto de coleta
+## 5. Do resultado do Nominatim para um ponto de coleta
 
-`app/overpass.py`
+`app/pontos.py`
 
 ```python
-def ponto_do_elemento(elemento: dict) -> dict | None:
-    """Converte um elemento do mapa, ou devolve None se ele nao recebe entregas."""
-    etiquetas = elemento.get("tags", {})
-    latitude = elemento.get("lat", elemento.get("center", {}).get("lat"))
-    longitude = elemento.get("lon", elemento.get("center", {}).get("lon"))
-    nome = etiquetas.get("name") or etiquetas.get("operator") or ""
+def ponto_do_lugar(lugar: dict) -> dict | None:
+    """Converte um lugar do mapa, ou devolve None se ele nao recebe entregas."""
+    etiquetas = lugar.get("extratags") or {}
+    nome = lugar.get("name") or etiquetas.get("operator") or ""
 
-    if latitude is None or longitude is None:
+    if not em_goias(lugar) or lugar.get("category") != "amenity":
         return None
     if etiquetas.get("access") in ("private", "no") or NOMES_EXCLUIDOS.search(nome):
         return None
     # Estacao de transbordo costuma ser area de aterro ou de empresa, nao ponto de entrega.
-    if etiquetas.get("amenity") == "waste_transfer_station" and "ecoponto" not in nome.casefold():
+    if lugar.get("type") != "recycling" and "ecoponto" not in nome.casefold():
         return None
 
     agrotoxico = bool(NOMES_DE_AGROTOXICOS.search(nome))
@@ -204,14 +218,12 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
     return {
         "nome": nome or f"{tipo} (sem nome no mapa)",
         "tipo": tipo,
-        "endereco": _endereco(etiquetas),
-        "latitude": latitude,
-        "longitude": longitude,
+        "endereco": _endereco(lugar.get("address", {})),
+        "latitude": float(lugar["lat"]),
+        "longitude": float(lugar["lon"]),
         "materiais": ["agrotoxicos"] if agrotoxico else materiais_das_etiquetas(etiquetas),
         "telefone": etiquetas.get("phone") or etiquetas.get("contact:phone") or "",
         "horario": etiquetas.get("opening_hours", ""),
-        "observacao": "",
-        "fonte": "OpenStreetMap",
     }
 ```
 
@@ -321,9 +333,6 @@ async function buscar(origem) {
   const parametros = parametrosDaBusca(origem);
   indicarBusca(true);
   mostrarMensagem("Procurando pontos...");
-  const demora = setTimeout(() => {
-    mostrarMensagem("O OpenStreetMap está demorando. Se ele não responder, usamos os dados guardados.");
-  }, 3000);
 
   try {
     const dados = await chamarApi(`/api/pontos?${parametros}`, { signal: busca.signal });
@@ -336,7 +345,6 @@ async function buscar(origem) {
     origemAtual = origemAnterior;
     mostrarMensagem(erro.message, true);
   } finally {
-    clearTimeout(demora);
     if (buscaEmAndamento === busca) indicarBusca(false);
   }
 }

@@ -75,9 +75,6 @@ async function buscar(origem) {
   const parametros = parametrosDaBusca(origem);
   indicarBusca(true);
   mostrarMensagem("Procurando pontos...");
-  const demora = setTimeout(() => {
-    mostrarMensagem("O OpenStreetMap está demorando. Se ele não responder, usamos os dados guardados.");
-  }, 3000);
 
   try {
     const dados = await chamarApi(`/api/pontos?${parametros}`, { signal: busca.signal });
@@ -90,7 +87,6 @@ async function buscar(origem) {
     origemAtual = origemAnterior;
     mostrarMensagem(erro.message, true);
   } finally {
-    clearTimeout(demora);
     if (buscaEmAndamento === busca) indicarBusca(false);
   }
 }
@@ -131,9 +127,9 @@ function mostrarResultado(dados, parametros) {
   linkCsv.href = `/api/pontos.csv?${parametros}`;
   linkCsv.hidden = dados.total === 0;
 
-  const textos = [...dados.avisos];
+  const textos = [];
   if (dados.fora_do_raio && dados.total > 0) {
-    textos.unshift(`Não há pontos até ${dados.raio_km} km. A lista mostra os mais próximos, mesmo que mais longe.`);
+    textos.push(`Não há pontos até ${dados.raio_km} km. A lista mostra os mais próximos, mesmo que mais longe.`);
   }
   if (PARECE_CEP.test(parametros.get("local") ?? "") && dados.origem.precisao !== "endereço") {
     textos.push(`A rua não foi localizada no mapa. As distâncias contam a partir do ${dados.origem.precisao}.`);
@@ -174,7 +170,6 @@ function criarLinha(ponto, indice) {
     ponto.endereco,
     ponto.horario,
     ponto.telefone,
-    ponto.observacao,
   ]) {
     if (texto) celulaPonto.append(criar("span", { className: "detalhe", textContent: texto }));
   }

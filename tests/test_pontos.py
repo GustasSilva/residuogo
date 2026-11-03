@@ -1,10 +1,10 @@
-"""A busca: distancia, limite de Goias, duplicatas e filtro de material."""
+"""Os pontos de coleta: conversao do que o Nominatim devolve, filtro e ordem."""
 
 import pytest
 
-from app.localizacao import dentro_de_goias
-from app.pontos import _remover_duplicatas, buscar, distancia_km
-from tests.conftest import elemento, responder_overpass
+from app import config
+from app.pontos import RAIO_DOS_MAIS_PROXIMOS_KM, _caixa, buscar, distancia_km, ponto_do_lugar
+from tests.conftest import lugar
 
 
 def nomes(resultado):
@@ -15,89 +15,133 @@ def test_distancia_entre_goiania_e_anapolis():
     assert distancia_km(-16.6869, -49.2648, -16.3281, -48.9534) == pytest.approx(52, abs=2)
 
 
+def test_caixa_cobre_o_circulo_da_busca():
+    oeste, norte, leste, sul = map(float, _caixa(-16.70, -49.27, 10).split(","))
+    assert distancia_km(-16.70, -49.27, norte, -49.27) == pytest.approx(10, abs=0.1)
+    assert distancia_km(-16.70, -49.27, -16.70, leste) == pytest.approx(10, abs=0.1)
+    assert oeste < leste and sul < norte
+
+
+# --- Conversao ---
+
+
+def test_materiais_vem_das_etiquetas():
+    ponto = ponto_do_lugar(lugar(nome="Cooperativa", **{"recycling:paper": "yes", "recycling:cans": "yes"}))
+    assert ponto["materiais"] == ["papel", "metal"]
+
+
+def test_ponto_sem_etiqueta_de_material_fica_sem_materiais():
+    assert ponto_do_lugar(lugar(nome="Cooperativa"))["materiais"] == []
+
+
 @pytest.mark.parametrize(
-    ("latitude", "longitude", "esperado"),
+    "nome",
+    ["inpEV Mineiros", "ADIAGO - Piracanjuba", "Associação de Defensivos Agrícolas", "Associação dos Revendedores de Agrotóxicos"],
+)
+def test_central_de_agrotoxicos_e_reconhecida_pelo_nome(nome):
+    ponto = ponto_do_lugar(lugar(nome=nome, recycling_type="centre"))
+    assert ponto["materiais"] == ["agrotoxicos"]
+    assert ponto["tipo"] == "Central de embalagens de agrotóxicos"
+
+
+@pytest.mark.parametrize(
+    "dados",
     [
-        (-16.68, -49.25, True),  # Goiania
-        (-16.07, -47.98, True),  # Valparaiso de Goias, colado no DF
-        (-15.54, -47.33, True),  # Formosa
-        (-15.79, -47.88, False),  # Brasilia, DF
-        (-18.65, -48.19, False),  # Araguari, MG
-        (-10.20, -48.33, False),  # Palmas, TO
+        {"nome": "ATERRO SANITÁRIO", "tipo": "waste_transfer_station"},
+        {"nome": "Lixão de Goiandira"},
+        {"tipo": "waste_transfer_station"},
+        {"nome": "Usina Coruripe", "tipo": "waste_transfer_station"},
+        {"nome": "Centro privado", "access": "private"},
+        {"nome": "Em Brasília", "estado": "BR-DF"},
+        {"nome": "Rua Ecoponto", "categoria": "highway", "tipo": "residential"},
     ],
 )
-def test_limite_de_goias(latitude, longitude, esperado):
-    assert dentro_de_goias(latitude, longitude) is esperado
+def test_lugares_que_nao_recebem_entrega_ficam_de_fora(dados):
+    assert ponto_do_lugar(lugar(**dados)) is None
 
 
-def test_ponto_fora_de_goias_nao_aparece(apis):
-    responder_overpass(apis, [
-        elemento(-16.07, -47.98, 1, name="Em Valparaíso"),
-        elemento(-15.79, -47.88, 2, name="Em Brasília"),
-    ])
-    assert nomes(buscar(-16.07, -47.98, 50, None)) == ["Em Valparaíso"]
+def test_ecoponto_marcado_como_estacao_de_transbordo_entra():
+    ponto = ponto_do_lugar(lugar(nome="Ecoponto Campos Dourados", tipo="waste_transfer_station"))
+    assert ponto["tipo"] == "Ecoponto"
 
 
-def test_mesmo_lugar_repetido_aparece_uma_vez():
-    primeiro = {"nome": "Ecoponto São José", "latitude": -16.7, "longitude": -49.3}
-    repetido = {"nome": "ECOPONTO SAO JOSE", "latitude": -16.7001, "longitude": -49.3001}
-    sem_nome = {"nome": "Centro de reciclagem (sem nome no mapa)", "latitude": -16.7002, "longitude": -49.3}
-    outro_vizinho = {"nome": "Sucataria do João", "latitude": -16.7001, "longitude": -49.3}
-    assert _remover_duplicatas([primeiro, repetido, sem_nome, outro_vizinho]) == [primeiro, outro_vizinho]
+def test_ponto_sem_nome_usa_o_tipo():
+    assert ponto_do_lugar(lugar(recycling_type="container"))["nome"] == "Contêiner de coleta (sem nome no mapa)"
 
 
-def test_resultado_vem_do_mais_perto_para_o_mais_longe(apis):
-    # Longe da lista de ecopontos, para o teste enxergar so o que o Overpass devolveu.
-    responder_overpass(apis, [
-        elemento(-17.80, -50.95, 1, name="Mais longe"),
-        elemento(-17.791, -50.92, 2, name="Mais perto"),
-        elemento(-18.50, -50.92, 3, name="Fora do raio"),
-    ])
-    resultado = buscar(-17.79, -50.92, 10, None)
+def test_endereco_horario_e_telefone_vem_do_mapa():
+    ponto = ponto_do_lugar(lugar(
+        nome="Cooperativa",
+        endereco={"road": "Rua 10", "house_number": "5", "suburb": "Setor Oeste", "city": "Goiânia"},
+        opening_hours="Mo-Fr 08:00-17:00",
+        phone="+55 62 3333-4444",
+    ))
+    assert ponto["endereco"] == "Rua 10, 5, Setor Oeste, Goiânia"
+    assert (ponto["horario"], ponto["telefone"]) == ("Mo-Fr 08:00-17:00", "+55 62 3333-4444")
+
+
+# --- Busca ---
+
+
+def test_resultado_vem_do_mais_perto_para_o_mais_longe(nominatim):
+    nominatim.pontos = [
+        lugar(-16.79, -50.95, 1, nome="Mais longe"),
+        lugar(-16.791, -50.92, 2, nome="Mais perto"),
+        lugar(-16.86, -50.92, 3, nome="No canto da caixa, fora do raio"),
+    ]
+    resultado = buscar(-16.79, -50.92, 5, None)
     assert nomes(resultado) == ["Mais perto", "Mais longe"]
-    assert resultado["avisos"] == []
     assert resultado["fora_do_raio"] is False
 
 
-def test_filtro_mantem_quem_aceita_e_quem_nao_informa(apis):
-    responder_overpass(apis, [
-        elemento(-17.79, -50.92, 1, **{"name": "Aceita papel", "recycling:paper": "yes"}),
-        elemento(-17.79, -50.93, 2, **{"name": "Só vidro", "recycling:glass": "yes"}),
-        elemento(-17.79, -50.94, 3, name="Não informa"),
-        elemento(-17.79, -50.95, 4, name="inpEV Rio Verde"),
-    ])
-    assert nomes(buscar(-17.79, -50.92, 10, "papel")) == ["Aceita papel", "Não informa"]
+def test_busca_pergunta_pela_caixa_do_raio(nominatim):
+    buscar(-16.79, -50.92, 5, None)
+    pedido = next(busca for busca in nominatim.buscas if busca["q"] == "[amenity=recycling]")
+    assert pedido["viewbox"] == _caixa(-16.79, -50.92, 5)
+    assert (pedido["bounded"], pedido["extratags"], pedido["addressdetails"]) == ("1", "1", "1")
 
 
-def test_ecopontos_da_lista_aparecem_com_os_materiais(apis):
-    responder_overpass(apis, [])
-    primeiro = buscar(-16.80, -49.37, 5, "pneus")["pontos"][0]
-    assert primeiro["nome"] == "Ecoponto Campos Dourados"
-    assert {"chave": "pneus", "rotulo": "Pneus"} in primeiro["materiais"]
+def test_filtro_mantem_quem_aceita_e_quem_nao_informa(nominatim):
+    nominatim.pontos = [
+        lugar(-16.79, -50.92, 1, nome="Aceita papel", **{"recycling:paper": "yes"}),
+        lugar(-16.79, -50.93, 2, nome="Só vidro", **{"recycling:glass": "yes"}),
+        lugar(-16.79, -50.94, 3, nome="Não informa"),
+        lugar(-16.79, -50.95, 4, nome="inpEV Rio Verde"),
+    ]
+    assert nomes(buscar(-16.79, -50.92, 10, "papel")) == ["Aceita papel", "Não informa"]
 
 
-def test_ecoponto_da_lista_tem_preferencia_sobre_o_do_mapa(apis):
-    responder_overpass(apis, [elemento(-16.80056, -49.36891, 1, name="Ecoponto Campos Dourados", amenity="waste_transfer_station")])
-    pontos = buscar(-16.80, -49.37, 2, None)["pontos"]
-    assert [ponto["fonte"] for ponto in pontos] == ["Prefeitura de Goiânia e imprensa"]
+def test_ecoponto_vem_da_busca_pelo_nome(nominatim):
+    nominatim.ecopontos = [lugar(-16.80, -49.37, 9, nome="Ecoponto Campos Dourados", tipo="waste_transfer_station")]
+    assert nomes(buscar(-16.80, -49.37, 5, None)) == ["Ecoponto Campos Dourados"]
+    pedido = next(busca for busca in nominatim.buscas if busca["q"] == "ecoponto")
+    assert pedido["viewbox"] == config.CAIXA_DE_GOIAS
 
 
-def test_sem_ponto_no_raio_mostra_os_mais_proximos_do_estado(apis, monkeypatch):
-    responder_overpass(apis, [])
-    copia = {"gerado_em": "2026-11-02", "elementos": [elemento(-16.00, -50.00, 1, name="Na cópia")]}
-    monkeypatch.setattr("app.overpass._copia_de_reserva", lambda: copia)
+def test_mesmo_lugar_nas_duas_buscas_aparece_uma_vez(nominatim):
+    ecoponto = lugar(-16.80, -49.37, 9, nome="Ecoponto Vila Nova")
+    nominatim.pontos = [ecoponto]
+    nominatim.ecopontos = [ecoponto]
+    assert nomes(buscar(-16.80, -49.37, 5, None)) == ["Ecoponto Vila Nova"]
 
-    resultado = buscar(-13.50, -47.00, 10, None)
-    distancias = [ponto["distancia_km"] for ponto in resultado["pontos"]]
+
+def test_sem_ponto_no_raio_mostra_os_mais_proximos_numa_area_maior(nominatim):
+    nominatim.pontos = [lugar(-13.60 - i / 10, -47.10, i, nome=f"Ponto {i}") for i in range(5)]
+    resultado = buscar(-13.50, -47.00, 5, None)
     assert resultado["fora_do_raio"] is True
-    assert len(distancias) == 3
-    assert distancias == sorted(distancias)
-    assert distancias[0] > 10
+    assert nomes(resultado) == ["Ponto 0", "Ponto 1", "Ponto 2"]
+    caixas = [busca["viewbox"] for busca in nominatim.buscas if busca["q"] == "[amenity=recycling]"]
+    assert caixas == [_caixa(-13.50, -47.00, 5), _caixa(-13.50, -47.00, RAIO_DOS_MAIS_PROXIMOS_KM)]
 
 
-def test_os_mais_proximos_respeitam_o_material(apis, monkeypatch):
-    responder_overpass(apis, [])
-    copia = {"gerado_em": "2026-11-02", "elementos": [elemento(-13.60, -47.10, 1, name="inpEV Perto")]}
-    monkeypatch.setattr("app.overpass._copia_de_reserva", lambda: copia)
-    assert "inpEV Perto" not in nomes(buscar(-13.50, -47.00, 5, "pneus"))
-    assert nomes(buscar(-13.50, -47.00, 5, "agrotoxicos"))[0] == "inpEV Perto"
+def test_os_mais_proximos_respeitam_o_material(nominatim):
+    nominatim.pontos = [lugar(-13.60, -47.10, 1, nome="inpEV Perto")]
+    assert nomes(buscar(-13.50, -47.00, 5, "pneus")) == []
+    assert nomes(buscar(-13.50, -47.00, 5, "agrotoxicos")) == ["inpEV Perto"]
+
+
+def test_busca_repetida_usa_o_cache(nominatim):
+    buscar(-16.79, -50.92, 10, None)
+    chamadas = len(nominatim.buscas)
+    buscar(-16.79, -50.92, 10, None)
+    assert len(nominatim.buscas) == chamadas

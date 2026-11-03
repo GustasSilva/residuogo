@@ -1,13 +1,13 @@
 """Os testes nao chamam a internet: o respx simula cada API externa."""
 
-import math
-import threading
+from types import SimpleNamespace
 
+import httpx
 import pytest
 import respx
 from fastapi.testclient import TestClient
 
-from app import config, overpass
+from app import config
 from app.main import app
 
 BUENO = {
@@ -18,9 +18,6 @@ BUENO = {
     "uf": "GO",
     "ibge": "5208707",
 }
-COORDENADAS_BUENO = [
-    {"lat": "-16.70", "lon": "-49.27", "display_name": "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil"}
-]
 
 MUNICIPIOS = [
     {"id": 5208707, "nome": "Goiânia", "regiao-imediata": {"regiao-intermediaria": {"nome": "Goiânia"}}},
@@ -28,28 +25,31 @@ MUNICIPIOS = [
     {"id": 5200100, "nome": "Água Limpa", "regiao-imediata": {"regiao-intermediaria": {"nome": "Itumbiara"}}},
 ]
 
-
-def esperar_consultas_ao_overpass():
-    for thread in threading.enumerate():
-        if thread.name.startswith("overpass"):
-            thread.join()
+CONTORNO = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}]}
 
 
-def elemento(lat=-16.70, lon=-49.27, identificador=1, **etiquetas):
-    etiquetas.setdefault("amenity", "recycling")
-    return {"type": "node", "id": identificador, "lat": lat, "lon": lon, "tags": etiquetas}
+def lugar(lat=-16.70, lon=-49.27, osm_id=1, nome="", tipo="recycling", estado="BR-GO", categoria="amenity",
+          endereco=None, nome_completo="Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil", **etiquetas):
+    """Um resultado do Nominatim pedido com `addressdetails` e `extratags`."""
+    return {
+        "osm_type": "node",
+        "osm_id": osm_id,
+        "lat": str(lat),
+        "lon": str(lon),
+        "category": categoria,
+        "type": tipo,
+        "name": nome,
+        "display_name": nome_completo,
+        "address": {"ISO3166-2-lvl4": estado, **(endereco or {})},
+        "extratags": etiquetas,
+    }
 
 
 @pytest.fixture(autouse=True)
 def ambiente_limpo(tmp_path, monkeypatch):
-    """Cada teste comeca com o cache vazio e sem lembrar de falhas do Overpass."""
+    """Cada teste comeca com o cache vazio e sem a espera de um segundo do Nominatim."""
     monkeypatch.setattr(config, "ARQUIVO_CACHE", tmp_path / "cache.db")
-    monkeypatch.setattr(config, "ESPERA_OVERPASS", 1)
-    monkeypatch.setattr(overpass, "_ultima_falha", -math.inf)
-    monkeypatch.setattr("app.localizacao.time.sleep", lambda _: None)
-    yield
-    # Sem isso, uma resposta atrasada gravaria no cache de verdade depois do teste.
-    esperar_consultas_ao_overpass()
+    monkeypatch.setattr("app.externo.time.sleep", lambda _: None)
 
 
 @pytest.fixture
@@ -64,20 +64,41 @@ def apis():
 
 
 @pytest.fixture
-def apis_ok(apis):
+def nominatim(apis):
+    """Simula o Nominatim. Cada teste troca o que cada tipo de busca devolve.
+
+    - `pontos`: resposta de q=[amenity=recycling]
+    - `ecopontos`: resposta de q=ecoponto
+    - `enderecos`: resposta das outras buscas (rua, bairro, cidade, texto livre)
+    - `estado`: o estado devolvido pela busca reversa (clique no mapa)
+    - `fora_do_ar`: quando verdadeiro, toda chamada responde 503
+    """
+    simulado = SimpleNamespace(
+        pontos=[], ecopontos=[], enderecos=[lugar(-16.70, -49.27)], estado="BR-GO", fora_do_ar=False, buscas=[]
+    )
+
+    def buscar(request):
+        if simulado.fora_do_ar:
+            return httpx.Response(503)
+        parametros = dict(request.url.params)
+        simulado.buscas.append(parametros)
+        respostas = {"[amenity=recycling]": simulado.pontos, "ecoponto": simulado.ecopontos}
+        return httpx.Response(200, json=respostas.get(parametros.get("q"), simulado.enderecos))
+
+    def reverso(request):
+        if simulado.fora_do_ar:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"address": {"ISO3166-2-lvl4": simulado.estado}})
+
+    apis.get(f"{config.URL_NOMINATIM}/search").mock(side_effect=buscar)
+    apis.get(f"{config.URL_NOMINATIM}/reverse").mock(side_effect=reverso)
+    return simulado
+
+
+@pytest.fixture
+def apis_ok(apis, nominatim):
     """Todas as APIs externas respondendo normalmente."""
     apis.get(config.URL_MUNICIPIOS).respond(json=MUNICIPIOS)
     apis.get(config.URL_VIACEP.format(cep="74230010")).respond(json=BUENO)
-    apis.get(config.URL_NOMINATIM).respond(json=COORDENADAS_BUENO)
-    responder_overpass(apis, [])
-    return apis
-
-
-def responder_overpass(apis, elementos):
-    for servidor in config.SERVIDORES_OVERPASS:
-        apis.post(servidor).respond(json={"elements": elementos})
-
-
-def derrubar_overpass(apis):
-    for servidor in config.SERVIDORES_OVERPASS:
-        apis.post(servidor).respond(status_code=504)
+    apis.get(config.URL_CONTORNO_GOIAS).respond(json=CONTORNO)
+    return nominatim

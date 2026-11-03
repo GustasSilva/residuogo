@@ -26,20 +26,18 @@ class FalhaExterna(Exception):
 
 
 def obter_json(url: str, servico: str, params: dict | None = None) -> Any:
-    return _chamar(servico, "GET", url, params=params, timeout=config.TEMPO_LIMITE_HTTP)
-
-
-def enviar_consulta(url: str, servico: str, dados: dict, tempo_limite: float) -> Any:
-    return _chamar(servico, "POST", url, data=dados, timeout=tempo_limite)
-
-
-def _chamar(servico: str, metodo: str, url: str, **opcoes: Any) -> Any:
     try:
-        resposta = _cliente.request(metodo, url, **opcoes)
+        resposta = _cliente.get(url, params=params, timeout=config.TEMPO_LIMITE_HTTP)
         resposta.raise_for_status()
         return resposta.json()
     except (httpx.HTTPError, ValueError) as erro:
         raise FalhaExterna(f"{servico}: {type(erro).__name__}") from erro
+
+
+def consultar_nominatim(rota: str, params: dict) -> Any:
+    """`rota` e "search" (texto para lugares) ou "reverse" (coordenadas para lugar)."""
+    time.sleep(1)  # o Nominatim pede no maximo uma chamada por segundo
+    return obter_json(f"{config.URL_NOMINATIM}/{rota}", "Nominatim", {**params, "format": "jsonv2"})
 
 
 # --- Cache ---
