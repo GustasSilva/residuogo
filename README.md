@@ -8,7 +8,7 @@ Trabalho de APS do curso de Ciência da Computação da UNIP. O enunciado pede w
 
 ## Como funciona
 
-O projeto tem um web service REST próprio, que consulta APIs públicas a cada busca, e uma página web que consome esse serviço. Nenhum dado de endereço ou de ponto de coleta fica guardado no código: tudo vem das APIs.
+O projeto tem um web service REST próprio, que busca os dados em APIs públicas no momento da consulta, e uma página web que consome esse serviço. Nenhum dado de endereço ou de ponto de coleta fica guardado no código: tudo vem das APIs, e o que já foi consultado fica num cache (veja "Quando uma API externa cai").
 
 | API externa | Para que é usada |
 |---|---|
@@ -19,7 +19,7 @@ O projeto tem um web service REST próprio, que consulta APIs públicas a cada b
 
 ## Como rodar
 
-Testado com Python 3.11 e 3.13. No PowerShell, a partir da raiz do projeto:
+Precisa do Python 3.10 ou mais novo (testado no 3.11). No PowerShell, a partir da raiz do projeto:
 
 ```
 python -m venv .venv
@@ -101,15 +101,15 @@ Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 3. Sem resposta e sem nada guardado, o serviço responde 503 com o nome da API que falhou.
 4. Sem o IBGE, o campo continua aceitando o nome da cidade: o Nominatim a encontra como um lugar qualquer.
 
-Antes de uma apresentação, vale fazer uma vez as buscas que serão mostradas: elas ficam no cache e não dependem mais das APIs. As imagens do mapa continuam vindo da internet.
+Antes de uma apresentação, vale fazer uma vez as buscas que serão mostradas: elas ficam no cache e não dependem mais das APIs. O mapa (a biblioteca Leaflet e as imagens) continua precisando de internet.
 
 ## De onde vêm os pontos
 
 - **OpenStreetMap, pelo Nominatim:** a cada busca, o serviço pergunta ao Nominatim pelos lugares marcados como ponto de reciclagem (`amenity=recycling`) dentro da área da busca e pelos ecopontos do estado, encontrados pelo nome. O parâmetro `extratags` traz junto os materiais aceitos, o horário e o telefone, quando o mapa tem essas informações.
 - **Só Goiás:** o Nominatim informa o estado de cada lugar, e só ficam os de Goiás. O contorno desenhado no mapa vem da API de malhas do IBGE.
-- **O que fica de fora:** aterros e lixões, porque não recebem entrega de quem procura um ponto, e áreas marcadas como privadas. As centrais de embalagens de agrotóxicos são reconhecidas pelo nome.
+- **O que fica de fora:** aterros, lixões e estações de transbordo que não são ecopontos, porque não recebem entrega de quem procura um ponto, e áreas marcadas como privadas. As centrais de embalagens de agrotóxicos são reconhecidas pelo nome.
 - **Limitações:** o mapa é aberto e feito por voluntários, então pode faltar ponto e a maioria não informa os materiais aceitos. Nesses casos, a tela mostra "Materiais aceitos não informados". O Nominatim é um buscador e devolve no máximo 50 lugares por consulta; em Goiás, com poucos pontos mapeados, isso não fez diferença nos testes.
-- **Outras fontes:** não foi encontrada API pública com os pontos de coleta de Goiás. O portal de dados abertos do estado não tem esses dados, nem a Prefeitura de Goiânia, e as entidades de logística reversa só têm buscadores nos próprios sites. Um ponto que esteja faltando pode ser cadastrado no OpenStreetMap e, alguns minutos depois, passa a aparecer na busca.
+- **Outras fontes:** não foi encontrada API pública com os pontos de coleta de Goiás. O portal de dados abertos do estado não tem esses dados, nem a Prefeitura de Goiânia, e as entidades de logística reversa só têm buscadores nos próprios sites. Um ponto que esteja faltando pode ser cadastrado no OpenStreetMap e passa a aparecer na busca: o Nominatim se atualiza em minutos, e o cache do sistema guarda os pontos por até 1 dia.
 
 As cores dos materiais na tela seguem a Resolução CONAMA 275/2001. Os itens que ela não cobre aparecem em cinza.
 

@@ -14,7 +14,7 @@ Pontos do mais perto para o mais longe, com o mesmo número na lista e no mapa. 
 
 ## Filtro por material e seleção de um ponto
 
-Mudar o material refaz a busca. Com "Eletrônicos e eletrodomésticos", a central de embalagens de agrotóxicos sai da lista. Quem não informa os materiais continua aparecendo, com um aviso para confirmar antes de ir. Clicar no nome destaca o ponto na lista e no mapa.
+Mudar o material refaz a busca. Com "Eletrônicos e eletrodomésticos", a central de embalagens de agrotóxicos sai da lista. Quem não informa os materiais continua aparecendo, com a frase "Materiais aceitos não informados". Clicar no nome destaca o ponto na lista e no mapa.
 
 ![Filtro por material e ponto selecionado](imagens/03-filtro-e-selecao.jpg)
 

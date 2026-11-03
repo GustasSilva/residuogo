@@ -25,6 +25,7 @@ flowchart LR
     pagina -- "imagens do mapa" --> tiles
     main --> localizacao
     main --> pontos
+    pontos -- "estado de cada lugar" --> localizacao
     localizacao --> externo
     pontos --> externo
     externo --> cache
