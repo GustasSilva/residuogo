@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ResíduoGO: onde levar resíduos em Goiás</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="estilo.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>ResíduoGO</h1>
+    <p>Onde levar seus resíduos em Goiás.</p>
+  </header>
+
+  <main>
+    <form id="busca" novalidate>
+      <div class="campo">
+        <label for="cep">CEP</label>
+        <input id="cep" name="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="74230-010">
+      </div>
+      <span class="ou">ou</span>
+      <div class="campo campo-largo">
+        <label for="municipio">Município</label>
+        <select id="municipio" name="municipio">
+          <option value="">Carregando...</option>
+        </select>
+      </div>
+      <div class="campo campo-largo">
+        <label for="material">O que você vai descartar</label>
+        <select id="material" name="material">
+          <option value="">Qualquer material</option>
+        </select>
+      </div>
+      <div class="campo">
+        <label for="raio">Distância</label>
+        <select id="raio" name="raio_km">
+          <option value="5">até 5 km</option>
+          <option value="10" selected>até 10 km</option>
+          <option value="25">até 25 km</option>
+          <option value="50">até 50 km</option>
+        </select>
+      </div>
+      <button type="submit" id="buscar">Buscar pontos</button>
+    </form>
+
+    <p id="mensagem" role="status"></p>
+
+    <section id="resultado" hidden>
+      <div class="titulo-resultado">
+        <h2 id="resumo"></h2>
+        <a id="csv" download>Baixar lista em CSV</a>
+      </div>
+      <div id="avisos"></div>
+      <div class="colunas">
+        <div id="mapa"></div>
+        <table id="tabela">
+          <thead>
+            <tr>
+              <th scope="col">Nº</th>
+              <th scope="col">Ponto</th>
+              <th scope="col">Distância</th>
+            </tr>
+          </thead>
+          <tbody id="linhas"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Dados do IBGE, ViaCEP, OpenStreetMap e Prefeitura de Goiânia. Distâncias em linha reta. Confirme o funcionamento do ponto antes de ir.</p>
+    <p><a href="/docs">Documentação da API</a></p>
+  </footer>
+</body>
+</html>

@@ -8,18 +8,14 @@ venv/
 *.db
 *.sqlite3
 
-# Configuracao com segredos
-.env
-
 # Testes e ferramentas
 .pytest_cache/
 .ruff_cache/
 htmlcov/
 .coverage
 
-# Node / front-end
-node_modules/
-dist/
+# Download da copia do OpenStreetMap ainda nao concluido
+copia_osm_em_andamento.json
 
 # Editores e sistema
 .vscode/

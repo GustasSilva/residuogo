@@ -15,8 +15,7 @@ conjunto ocupa. Assim o relatorio e sempre montado a partir do codigo que
 roda - um trecho copiado a mao envelheceria na primeira correcao.
 
 Trechos com o mesmo numero sao agrupados sob o mesmo titulo, o que permite
-reunir partes de arquivos diferentes (por exemplo, o servico SOAP, que tem o
-envelope em um arquivo e a rota em outro).
+reunir partes de arquivos diferentes.
 
 Uso, a partir da pasta `backend`:
 
@@ -32,12 +31,12 @@ RAIZ = Path(__file__).resolve().parents[2]
 DESTINO = RAIZ / "docs" / "TRECHOS_DE_CODIGO.md"
 
 # Pastas que nao sao codigo do projeto.
-IGNORADAS = {".git", ".venv", "node_modules", "__pycache__", "dist", ".pytest_cache"}
+IGNORADAS = {".git", ".venv", "__pycache__", ".pytest_cache"}
 
 # Extensoes procuradas e a linguagem usada na marcacao do bloco de codigo.
-LINGUAGENS = {".py": "python", ".ts": "ts", ".tsx": "tsx"}
+LINGUAGENS = {".py": "python", ".js": "js"}
 
-# Aceita `#` (Python) e `//` (TypeScript) como inicio do comentario.
+# Aceita `#` (Python) e `//` (JavaScript) como inicio do comentario.
 INICIO = re.compile(r"^\s*(?:#|//)\s*APS-TRECHO\s+(\d+)\s*:\s*(.+?)\s*$")
 FIM = re.compile(r"^\s*(?:#|//)\s*APS-FIM\s*$")
 

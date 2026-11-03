@@ -1,0 +1,217 @@
+:root {
+  --texto: #1f1f1f;
+  --apagado: #5c5c5c;
+  --linha: #c9c9c9;
+  --fundo-claro: #f3f3f3;
+  --azul: #0b5ea8;
+  --vermelho: #d0312d;
+  --verde: #1e8a44;
+  --amarelo: #f2c200;
+  --laranja: #e8780c;
+  --marrom: #7b4a21;
+  --preto: #000;
+  --cinza: #8a8a8a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 1200px;
+  padding: 0 16px;
+  background: #fff;
+  color: var(--texto);
+  font: 16px/1.45 Arial, Helvetica, sans-serif;
+}
+
+a { color: var(--azul); }
+
+header { padding: 20px 0 0; }
+
+h1 { margin: 0; font-size: 30px; }
+
+header p { margin: 2px 0 12px; font-size: 18px; }
+
+/* As quatro cores da coleta seletiva */
+header::after {
+  content: "";
+  display: block;
+  height: 6px;
+  background: linear-gradient(to right,
+    var(--azul) 0 25%, var(--vermelho) 25% 50%, var(--verde) 50% 75%, var(--amarelo) 75% 100%);
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+
+.campo { display: flex; flex-direction: column; }
+.campo-largo { flex: 1 1 220px; }
+
+label { margin-bottom: 3px; font-weight: bold; font-size: 14px; }
+
+input, select, button { height: 38px; font: inherit; }
+
+input, select {
+  padding: 0 8px;
+  border: 1px solid var(--apagado);
+  border-radius: 2px;
+  background: #fff;
+  color: inherit;
+}
+
+#cep { width: 125px; }
+
+.ou { padding-bottom: 8px; color: var(--apagado); }
+
+button {
+  padding: 0 18px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--azul);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover { background: #084a85; }
+button:disabled { background: var(--cinza); cursor: wait; }
+
+:focus-visible { outline: 3px solid var(--amarelo); outline-offset: 1px; }
+
+#mensagem { min-height: 24px; margin: 8px 0; }
+#mensagem.erro { color: #a81f1b; font-weight: bold; }
+
+.titulo-resultado {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 20px;
+  margin-bottom: 8px;
+}
+
+h2 { margin: 0; font-size: 20px; }
+
+.aviso {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border-left: 5px solid var(--amarelo);
+  background: #fff8d6;
+}
+
+.colunas { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
+
+#mapa {
+  position: sticky;
+  top: 12px;
+  height: 560px;
+  border: 1px solid var(--linha);
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+th {
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--texto);
+  text-align: left;
+  font-size: 14px;
+}
+
+td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--linha);
+  vertical-align: top;
+}
+
+tr.selecionada td { background: var(--fundo-claro); }
+
+.numero { font-weight: bold; }
+.distancia { white-space: nowrap; }
+
+.nome-ponto {
+  padding: 0;
+  height: auto;
+  border: 0;
+  background: none;
+  color: var(--azul);
+  font-weight: bold;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.nome-ponto:hover { background: none; color: #084a85; }
+
+.detalhe { display: block; margin-top: 2px; color: var(--apagado); font-size: 14px; }
+
+.materiais {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px 12px;
+  margin: 6px 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.materiais li { display: flex; align-items: baseline; gap: 5px; }
+
+/* Cores da Resolucao CONAMA 275/2001. Os itens que ela nao cobre ficam em cinza. */
+.cor {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  background: var(--cinza);
+}
+
+.cor-papel { background: var(--azul); }
+.cor-plastico { background: var(--vermelho); }
+.cor-vidro { background: var(--verde); }
+.cor-metal { background: var(--amarelo); }
+.cor-galhos { background: var(--marrom); }
+.cor-moveis { background: var(--preto); }
+.cor-oleo, .cor-pilhas, .cor-agrotoxicos { background: var(--laranja); }
+
+.marcador {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border: 1px solid #fff;
+  background: var(--azul);
+  color: #fff;
+  font: bold 13px/22px Arial, Helvetica, sans-serif;
+  text-align: center;
+}
+
+.marcador.ativo { background: var(--vermelho); }
+
+footer {
+  margin-top: 32px;
+  padding: 12px 0 24px;
+  border-top: 1px solid var(--linha);
+  color: var(--apagado);
+  font-size: 14px;
+}
+
+footer p { margin: 0 0 4px; }
+
+@media (max-width: 860px) {
+  .colunas { grid-template-columns: 1fr; }
+  #mapa { position: static; height: 320px; }
+}
+
+@media (max-width: 560px) {
+  .campo, button { flex: 1 1 100%; }
+  #cep { width: 100%; }
+  .ou { padding: 0; }
+
+  thead { position: absolute; left: -9999px; }
+  table, tbody, tr, td { display: block; }
+  tr { position: relative; padding: 10px 0 10px 34px; border-bottom: 1px solid var(--linha); }
+  td { padding: 2px 0; border: 0; }
+  td.numero { position: absolute; left: 4px; top: 12px; }
+}

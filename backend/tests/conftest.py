@@ -1,179 +1,72 @@
-"""Infraestrutura comum dos testes.
+"""Os testes nao chamam a internet: o respx simula cada API externa."""
 
-As "fixtures" definidas aqui ficam disponiveis para todos os arquivos de teste
-sem precisarem ser importadas - o pytest as encontra pelo nome do parametro.
-
-A decisao central deste arquivo: cada teste roda sobre um banco SQLite **em
-memoria**, criado vazio e descartado no fim. Isso garante que os testes nao
-dependam da ordem em que rodam, nao sujem o banco de desenvolvimento e nao
-precisem de limpeza manual.
-"""
-
-from datetime import date, timedelta
+import math
 
 import pytest
+import respx
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.config import config
-from app.database import Base
-from app.dependencies import obter_sessao
-from app.enums import ClasseResiduo, PapelOrganizacao, PerfilUsuario, UnidadeMedida
+from app import config, pontos
 from app.main import app
-from app.models import Organizacao, TipoResiduo, Usuario
-from app.security import gerar_hash_senha
-from app.validacoes import completar_cnpj
 
-SENHA_TESTE = "senhaDeTeste123"
+BUENO = {
+    "cep": "74230-010",
+    "logradouro": "Avenida T 15",
+    "bairro": "Setor Bueno",
+    "localidade": "Goiânia",
+    "uf": "GO",
+    "ibge": "5208707",
+}
+COORDENADAS_BUENO = [{"lat": "-16.70", "lon": "-49.27"}]
 
-# O bcrypt e lento por projeto, o que e desejavel em producao e inviavel em
-# uma suite com centenas de logins. O custo minimo mantem o comportamento
-# identico e derruba o tempo total de minutos para segundos.
-config.bcrypt_custo = 4
+MUNICIPIOS = [
+    {"id": 5208707, "nome": "Goiânia", "regiao-imediata": {"regiao-intermediaria": {"nome": "Goiânia"}}},
+    {"id": 5200050, "nome": "Abadia de Goiás", "regiao-imediata": {"regiao-intermediaria": {"nome": "Goiânia"}}},
+    {"id": 5200100, "nome": "Água Limpa", "regiao-imediata": {"regiao-intermediaria": {"nome": "Itumbiara"}}},
+]
 
 
-@pytest.fixture
-def sessao() -> Session:
-    """Entrega uma sessao ligada a um banco em memoria, vazio.
+def elemento(lat=-16.70, lon=-49.27, identificador=1, **etiquetas):
+    etiquetas.setdefault("amenity", "recycling")
+    return {"type": "node", "id": identificador, "lat": lat, "lon": lon, "tags": etiquetas}
 
-    `StaticPool` faz todas as sessoes compartilharem a mesma conexao. Sem
-    isso, um banco SQLite em memoria seria diferente para cada conexao aberta,
-    e o dado gravado pelo teste nao seria encontrado pela aplicacao.
-    """
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
 
-    fabrica = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-    with fabrica() as sessao_de_teste:
-        yield sessao_de_teste
-
-    engine.dispose()
+@pytest.fixture(autouse=True)
+def ambiente_limpo(tmp_path, monkeypatch):
+    """Cada teste comeca com o cache vazio e sem lembrar de falhas do Overpass."""
+    monkeypatch.setattr(config, "ARQUIVO_CACHE", tmp_path / "cache.db")
+    monkeypatch.setattr(config, "TEMPO_LIMITE_OVERPASS", 1)
+    monkeypatch.setattr(pontos, "_ultima_falha_overpass", -math.inf)
+    monkeypatch.setattr("app.localizacao._ultima_chamada_nominatim", -math.inf)
 
 
 @pytest.fixture
-def cliente(sessao: Session) -> TestClient:
-    """Cliente HTTP que conversa com a aplicacao sem subir um servidor.
-
-    A substituicao em `dependency_overrides` troca a sessao real pela de
-    teste: a aplicacao inteira passa a usar o banco em memoria sem que
-    nenhuma linha de codigo de producao mude.
-
-    O `TestClient` e usado sem `with` de proposito. O bloco `with` dispararia
-    o ciclo de vida da aplicacao, que cria as tabelas no banco de
-    desenvolvimento - justamente o que os testes devem evitar tocar.
-    """
-    app.dependency_overrides[obter_sessao] = lambda: sessao
-    yield TestClient(app)
-    app.dependency_overrides.clear()
+def cliente():
+    return TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
-def dados(sessao: Session) -> dict:
-    """Cria o conjunto minimo de registros usado pela maioria dos testes.
-
-    Inclui, de proposito, uma transportadora com licenca vencida: e ela que
-    permite testar a regra RN04 sem montar o cenario em cada teste.
-    """
-    ontem = date.today() - timedelta(days=1)
-    futuro = date.today() + timedelta(days=365)
-
-    def nova_organizacao(
-        base_cnpj: str, razao: str, papel: PapelOrganizacao, validade: date
-    ) -> Organizacao:
-        return Organizacao(
-            razao_social=razao,
-            cnpj=completar_cnpj(base_cnpj),
-            papel=papel,
-            cep="74000000",
-            logradouro="Rua de Teste",
-            numero="100",
-            bairro="Centro",
-            municipio_ibge_codigo="5208707",
-            municipio_nome="Goiânia",
-            licenca_numero="LIC-TESTE",
-            licenca_validade=validade,
-        )
-
-    gerador = nova_organizacao("112223330001", "Gerador Teste SA", PapelOrganizacao.GERADOR, futuro)
-    transportador = nova_organizacao(
-        "334445550001", "Transportador Teste SA", PapelOrganizacao.TRANSPORTADOR, futuro
-    )
-    transportador_vencido = nova_organizacao(
-        "445556660001", "Transportador Vencido SA", PapelOrganizacao.TRANSPORTADOR, ontem
-    )
-    destinador = nova_organizacao(
-        "556667770001", "Destinador Teste SA", PapelOrganizacao.DESTINADOR, futuro
-    )
-
-    sessao.add_all([gerador, transportador, transportador_vencido, destinador])
-    sessao.flush()
-
-    admin = Usuario(
-        nome="Admin Teste",
-        email="admin@teste.com.br",
-        senha_hash=gerar_hash_senha(SENHA_TESTE),
-        perfil=PerfilUsuario.ADMIN,
-        organizacao_id=None,
-    )
-    usuario_gerador = Usuario(
-        nome="Usuario Gerador",
-        email="gerador@teste.com.br",
-        senha_hash=gerar_hash_senha(SENHA_TESTE),
-        perfil=PerfilUsuario.USUARIO,
-        organizacao_id=gerador.id,
-    )
-    usuario_transportador = Usuario(
-        nome="Usuario Transportador",
-        email="transportador@teste.com.br",
-        senha_hash=gerar_hash_senha(SENHA_TESTE),
-        perfil=PerfilUsuario.USUARIO,
-        organizacao_id=transportador.id,
-    )
-    usuario_destinador = Usuario(
-        nome="Usuario Destinador",
-        email="destinador@teste.com.br",
-        senha_hash=gerar_hash_senha(SENHA_TESTE),
-        perfil=PerfilUsuario.USUARIO,
-        organizacao_id=destinador.id,
-    )
-
-    tipo = TipoResiduo(
-        codigo="020202",
-        descricao="Resíduo de tecido animal",
-        classe=ClasseResiduo.IIA,
-        unidade_padrao=UnidadeMedida.T,
-    )
-
-    sessao.add_all(
-        [admin, usuario_gerador, usuario_transportador, usuario_destinador, tipo]
-    )
-    sessao.commit()
-
-    return {
-        "gerador": gerador,
-        "transportador": transportador,
-        "transportador_vencido": transportador_vencido,
-        "destinador": destinador,
-        "admin": admin,
-        "usuario_gerador": usuario_gerador,
-        "usuario_transportador": usuario_transportador,
-        "usuario_destinador": usuario_destinador,
-        "tipo_residuo": tipo,
-    }
+def apis():
+    with respx.mock(assert_all_called=False) as simulador:
+        yield simulador
 
 
-def autenticar(cliente: TestClient, email: str, senha: str = SENHA_TESTE) -> dict[str, str]:
-    """Faz login e devolve o cabecalho de autorizacao pronto para uso.
+@pytest.fixture
+def apis_ok(apis):
+    """Todas as APIs externas respondendo normalmente."""
+    apis.get(config.URL_MUNICIPIOS).respond(json=MUNICIPIOS)
+    apis.get(config.URL_VIACEP.format(cep="74230010")).respond(json=BUENO)
+    apis.get(config.URL_NOMINATIM).respond(json=COORDENADAS_BUENO)
+    for servidor in config.SERVIDORES_OVERPASS:
+        apis.post(servidor).respond(json={"elements": []})
+    return apis
 
-    E uma funcao auxiliar, nao uma fixture, porque cada teste precisa escolher
-    *qual* usuario autenticar.
-    """
-    resposta = cliente.post("/api/v1/auth/login", json={"email": email, "senha": senha})
-    assert resposta.status_code == 200, resposta.text
-    return {"Authorization": f"Bearer {resposta.json()['token']}"}
+
+def responder_overpass(apis, elementos):
+    for servidor in config.SERVIDORES_OVERPASS:
+        apis.post(servidor).respond(json={"elements": elementos})
+
+
+def derrubar_overpass(apis):
+    for servidor in config.SERVIDORES_OVERPASS:
+        apis.post(servidor).respond(status_code=504)

@@ -1,256 +1,97 @@
-# Diagramas do ResíduoGO
+# Diagramas
 
-Os cinco diagramas do sistema, escritos em [Mermaid](https://mermaid.js.org).
-O código de cada um está logo abaixo da figura correspondente e é a fonte de
-verdade: as imagens em `imagens/` foram exportadas destes blocos.
+Em Mermaid: o GitHub desenha direto, e em [mermaid.live](https://mermaid.live) dá para exportar a imagem para o relatório.
 
-**Como ver e exportar.** O GitHub e o VS Code (painel de pré-visualização do
-Markdown) desenham os diagramas direto deste arquivo. Para gerar uma imagem
-nova — depois de mudar alguma coisa no sistema —, cole o bloco em
-<https://mermaid.live> e use *Actions → PNG*.
-
----
-
-## 1. Arquitetura
-
-> Imagem: `imagens/diagrama-1-arquitetura.png`
-
-Quem fala com quem. Os dois web services exigidos pelo trabalho — REST e
-SOAP — estão na mesma aplicação e compartilham a camada de serviços, que é
-onde moram as regras de negócio. É isso que impede os dois de divergirem: um
-manifesto consultado por SOAP passou pelas mesmas regras de um consultado por
-REST.
+## Componentes
 
 ```mermaid
 flowchart LR
-    subgraph clientes["Clientes"]
-        direction TB
-        navegador["Navegador<br>React + Vite"]
-        swagger["Swagger / curl"]
-        zeep["Cliente SOAP<br>zeep"]
+    pagina["Página web<br/>HTML, CSS e JavaScript"]
+
+    subgraph servico["Web service REST (FastAPI)"]
+        main["main.py<br/>rotas"]
+        localizacao["localizacao.py"]
+        pontos["pontos.py"]
+        externo["externo.py<br/>HTTP e cache"]
+        cache[("cache.db<br/>SQLite")]
+        dados["dados/<br/>ecopontos e cópia"]
     end
 
-    subgraph aplicacao["Aplicação FastAPI"]
-        direction TB
-        rest["Rotas REST<br>/api/v1"]
-        soap["Serviço SOAP<br>/soap/manifesto"]
-        documentos["Documentos<br>PDF, CSV e QR code"]
-        integracoes["Integrações<br>com cache em memória"]
-        servicos["Serviços<br>regras RN01 a RN08"]
-    end
+    ibge["IBGE"]
+    viacep["ViaCEP"]
+    nominatim["Nominatim"]
+    overpass["Overpass"]
+    tiles["Mapa do OpenStreetMap"]
 
-    subgraph externos["Serviços externos"]
-        direction TB
-        ibge["API do IBGE"]
-        viacep["ViaCEP"]
-    end
-
-    banco[("SQLite<br>residuogo.db")]
-
-    navegador --> rest
-    swagger --> rest
-    zeep --> soap
-
-    rest --> servicos
-    soap --> servicos
-    rest --> documentos
-    documentos --> servicos
-    rest --> integracoes
-
-    integracoes --> ibge
-    integracoes --> viacep
-    servicos --> banco
+    pagina -- "JSON e CSV" --> main
+    pagina -- "imagens do mapa" --> tiles
+    main --> localizacao
+    main --> pontos
+    localizacao --> externo
+    pontos --> externo
+    pontos --> dados
+    externo --> cache
+    externo --> ibge
+    externo --> viacep
+    externo --> nominatim
+    externo --> overpass
 ```
 
----
-
-## 2. Modelo de dados
-
-> Imagem: `imagens/diagrama-2-modelo-de-dados.png`
-
-Seis tabelas. As três ligações entre `manifesto` e `organizacao` são os três
-papéis do ciclo do resíduo — gerador, transportador e destinador —, e é por
-elas que a regra de visibilidade (RN07) decide o que cada usuário enxerga.
-
-A tabela `movimentacao` só recebe inserções: é o histórico de auditoria exigido
-pela regra RN03.
-
-```mermaid
-erDiagram
-    ORGANIZACAO ||--o{ USUARIO : "emprega"
-    ORGANIZACAO ||--o{ MANIFESTO : "gera"
-    ORGANIZACAO ||--o{ MANIFESTO : "transporta"
-    ORGANIZACAO ||--o{ MANIFESTO : "destina"
-    MANIFESTO ||--|{ ITEM_MANIFESTO : "contém"
-    MANIFESTO ||--o{ MOVIMENTACAO : "registra"
-    TIPO_RESIDUO ||--o{ ITEM_MANIFESTO : "classifica"
-    USUARIO ||--o{ MOVIMENTACAO : "executa"
-
-    ORGANIZACAO {
-        int id PK
-        string razao_social
-        string cnpj UK
-        enum papel "GERADOR, TRANSPORTADOR, DESTINADOR"
-        string municipio_ibge_codigo
-        string licenca_numero
-        date licenca_validade
-        bool ativo
-    }
-
-    USUARIO {
-        int id PK
-        string nome
-        string email UK
-        string senha_hash
-        enum perfil "ADMIN, USUARIO"
-        int organizacao_id FK "nulo para ADMIN"
-        bool ativo
-    }
-
-    TIPO_RESIDUO {
-        int id PK
-        string codigo UK
-        string descricao
-        enum classe "I, IIA, IIB"
-        enum unidade_padrao "KG, T, L, M3"
-    }
-
-    MANIFESTO {
-        int id PK
-        string numero UK "RGO-AAAA-NNNNNN"
-        int gerador_id FK
-        int transportador_id FK
-        int destinador_id FK
-        enum status "EMITIDO ... DESTINADO"
-        string placa_veiculo
-        string motorista_nome
-        enum tipo_destinacao
-        string motivo_recusa
-        string qr_token UK
-        datetime emitido_em
-        datetime coletado_em
-        datetime recebido_em
-        datetime destinado_em
-    }
-
-    ITEM_MANIFESTO {
-        int id PK
-        int manifesto_id FK
-        int tipo_residuo_id FK
-        decimal quantidade_declarada
-        decimal quantidade_recebida
-        enum unidade
-        enum acondicionamento
-        bool divergente "RN05"
-    }
-
-    MOVIMENTACAO {
-        int id PK
-        int manifesto_id FK
-        int usuario_id FK
-        enum status_anterior
-        enum status_novo
-        datetime data_hora
-        string observacao
-    }
-```
-
----
-
-## 3. Ciclo de vida do manifesto
-
-> Imagem: `imagens/diagrama-3-ciclo-do-manifesto.png`
-
-A máquina de estados. Cada seta diz quem tem autoridade para percorrê-la
-(regra RN01), e o que não está desenhado é recusado com `409` (RN02). Os três
-estados finais não admitem nenhuma alteração posterior.
-
-No código, este diagrama é um dicionário — `TRANSICOES`, em
-`services/manifestos.py` —, e não uma sequência de condicionais: acrescentar
-uma transição nova é acrescentar uma linha.
-
-```mermaid
-stateDiagram-v2
-    [*] --> EMITIDO: gerador emite
-    EMITIDO --> EM_TRANSPORTE: transportador coleta
-    EMITIDO --> CANCELADO: gerador cancela
-    EM_TRANSPORTE --> RECEBIDO: destinador recebe
-    EM_TRANSPORTE --> RECUSADO: destinador recusa
-    RECEBIDO --> DESTINADO: destinador destina
-    DESTINADO --> [*]
-    RECUSADO --> [*]
-    CANCELADO --> [*]
-```
-
----
-
-## 4. Uma transição, do clique ao banco
-
-> Imagem: `imagens/diagrama-4-sequencia-da-transicao.png`
-
-O caminho de "confirmar coleta", que é o mesmo das outras quatro transições. O
-que importa nele: a tela **não** envia o status novo, apenas o fato ocorrido; o
-status resultante é decidido pelo servidor, em um único ponto do sistema. Por
-isso a máquina de estados não pode ser contornada pela interface.
+## Busca por CEP
 
 ```mermaid
 sequenceDiagram
-    actor usuario as Transportador
-    participant tela as Tela (React)
-    participant rota as POST /manifestos/{id}/coleta
-    participant servico as Serviço do manifesto
-    participant banco as SQLite
+    actor Pessoa
+    participant P as Página web
+    participant S as Web service
+    participant V as ViaCEP
+    participant N as Nominatim
+    participant O as Overpass
 
-    usuario->>tela: informa placa e motorista
-    tela->>rota: POST com os dados da coleta
-    rota->>servico: confirmar_coleta(...)
-    servico->>banco: carrega o manifesto
-    servico->>servico: visibilidade (RN07) e papel (RN01)
-    servico->>servico: transição permitida? (RN02)
-
-    alt transição válida
-        servico->>banco: status = EM_TRANSPORTE
-        servico->>banco: grava a movimentação (RN03)
-        servico-->>rota: manifesto atualizado
-        rota-->>tela: 200 com o manifesto
-        tela-->>usuario: nova situação e histórico
-    else transição recusada
-        servico-->>rota: TransicaoInvalida
-        rota-->>tela: 409 application/problem+json
-        tela-->>usuario: mensagem e código do erro
-    end
+    Pessoa->>P: informa CEP, material e distância
+    P->>S: GET /api/pontos?cep=...&raio_km=...&material=...
+    S->>V: endereço do CEP
+    V-->>S: rua, bairro, cidade e código IBGE
+    S->>N: coordenadas do endereço
+    N-->>S: latitude e longitude
+    S->>O: pontos de coleta em volta
+    O-->>S: elementos do mapa
+    S->>S: junta os ecopontos, tira duplicatas, filtra e ordena
+    S-->>P: origem, pontos e avisos (JSON)
+    P-->>Pessoa: lista e mapa
 ```
 
----
-
-## 5. Consulta a um serviço externo
-
-> Imagem: `imagens/diagrama-5-integracao-externa.png`
-
-A política de indisponibilidade, escrita uma vez em `integrations/externo.py` e
-usada pelas duas integrações. Ela responde à pergunta que todo sistema que
-depende de terceiro precisa responder: o que acontece quando o terceiro cai.
-
-Repare na diferença entre as duas saídas de erro. "O CEP não existe" é uma
-resposta **correta** do ViaCEP e vira `404 RECURSO_NAO_ENCONTRADO`, sem passar
-pelo cache; "o ViaCEP não respondeu" é falha de comunicação, e aí o sistema
-serve o último dado que tem, mesmo vencido, antes de admitir o
-`503 SERVICO_EXTERNO_INDISPONIVEL`.
+## De onde vêm os pontos
 
 ```mermaid
 flowchart TD
-    inicio([Consulta ao IBGE ou ViaCEP]) --> cache{"Cache<br>dentro da validade?"}
-    cache -- sim --> servecache["Responde do cache<br>X-Fonte: cache"]
-    cache -- não --> chamada["Chama a API externa<br>limite de 5 s"]
+    inicio["Busca em uma coordenada"] --> cache{"Tem consulta<br/>de menos de 1 dia?"}
+    cache -- sim --> usar["Usa a consulta guardada"]
+    cache -- não --> falhou{"Overpass falhou<br/>nos últimos 2 minutos?"}
+    falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 12 s"]
+    perguntar --> respondeu{"Algum respondeu?"}
+    respondeu -- sim --> guardar["Guarda no cache e usa"]
+    respondeu -- não --> antiga{"Tem consulta<br/>antiga guardada?"}
+    falhou -- sim --> antiga
+    antiga -- sim --> aviso1["Usa a consulta antiga<br/>e avisa a data"]
+    antiga -- não --> copia["Usa a cópia de Goiás<br/>e avisa a data"]
+    usar --> final["Junta com os ecopontos de Goiânia"]
+    guardar --> final
+    aviso1 --> final
+    copia --> final
+```
 
-    chamada --> resultado{Resultado}
-    resultado -- "resposta boa" --> guarda["Guarda no cache"] --> serveapi["Responde<br>X-Fonte: api"]
-    resultado -- "não existe" --> naoexiste["404 — não encontrado<br>não vai para o cache"]
-    resultado -- "erro de rede ou 5xx" --> retenta{"Já tentou<br>duas vezes?"}
+## Do CEP até as coordenadas
 
-    retenta -- não --> chamada
-    retenta -- sim --> vencido{"Existe cache<br>vencido?"}
-
-    vencido -- sim --> servevencido["Responde o dado antigo<br>X-Fonte: cache-expirado"]
-    vencido -- não --> indisponivel["503 — serviço externo<br>indisponível"]
+```mermaid
+flowchart TD
+    cep["CEP"] --> viacep["ViaCEP: rua, bairro e cidade"]
+    viacep --> rua{"Nominatim achou a rua?"}
+    rua -- sim --> r1["Precisão: endereço"]
+    rua -- não --> bairro{"Achou o bairro?"}
+    bairro -- sim --> r2["Precisão: bairro"]
+    bairro -- não --> cidade{"Achou a cidade?"}
+    cidade -- sim --> r3["Precisão: município"]
+    cidade -- não --> ibge["Centro do município, pelo IBGE"]
+    ibge --> r3
 ```

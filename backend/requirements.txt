@@ -1,36 +1,7 @@
-# --- Aplicacao ---
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
-sqlalchemy==2.0.36
-pydantic==2.10.4
-pydantic-settings==2.7.0
-email-validator==2.2.0
-
-# --- Seguranca ---
-pyjwt==2.10.1
-bcrypt==4.2.1
-
-# --- SOAP (envelope e WSDL sao montados a mao; lxml faz o parse do XML) ---
-lxml==5.3.0
-
-# --- Fusos horarios ---
-# O Windows nao traz o banco de dados de fusos IANA que o `zoneinfo` usa;
-# este pacote o fornece. Em Linux e macOS ele e inofensivo.
-tzdata==2024.2
-
-# --- Integracoes externas (IBGE e ViaCEP) ---
 httpx==0.28.1
 
-# --- Relatorios ---
-reportlab==4.2.5
-qrcode[pil]==8.0
-
-# --- Desenvolvimento e testes ---
+# Testes
 pytest==8.3.4
-zeep==4.3.1
-# Simula as respostas do IBGE e do ViaCEP: os testes nao chamam a internet,
-# e e assim que da para testar tempo limite e indisponibilidade de proposito.
 respx==0.22.0
-# Le de volta os PDF gerados, para os testes conferirem o conteudo do
-# documento e nao apenas que o arquivo foi produzido.
-pypdf==5.1.0

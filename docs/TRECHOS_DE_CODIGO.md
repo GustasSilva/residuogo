@@ -3,386 +3,308 @@
 Gerado por `scripts/exportar_trechos.py` a partir das marcas `APS-TRECHO`
 deixadas no código-fonte. Não editar à mão: a próxima execução sobrescreve.
 
-**6 trechos, 299 linhas de código.** O relatório admite cerca de 380 linhas (10 páginas em Arial 12, espaçamento 1,5), então ainda cabem comentários de abertura e as legendas de cada trecho.
+**7 trechos, 231 linhas de código.** O relatório admite cerca de 380 linhas (10 páginas em Arial 12, espaçamento 1,5), então ainda cabem comentários de abertura e as legendas de cada trecho.
 
 | # | Trecho | Onde | Linhas |
 |---|---|---|---|
-| 1 | Rotas REST — cada transição é um POST para um sub-recurso | `backend/app/routers/manifestos.py` | 35 |
-| 2 | A máquina de estados do manifesto | `backend/app/services/manifestos.py` | 63 |
-| 3 | Todo erro responde no formato RFC 7807 | `backend/app/errors.py` | 36 |
-| 4 | Serviço SOAP escrito à mão — leitura do envelope e SOAP Fault | `backend/app/soap/envelope.py` | 81 |
-| 5 | Consumo do serviço SOAP com zeep — nenhum XML no código | `clients/soap_client.py` | 41 |
-| 6 | Integração externa — cache, queda tratada e procedência do dado | `backend/app/integrations/externo.py` | 43 |
+| 1 | De onde vem os pontos, e o que acontece quando o Overpass cai | `backend/app/pontos.py` | 27 |
+| 2 | Do CEP ate as coordenadas, da busca mais precisa para a menos precisa | `backend/app/localizacao.py` | 23 |
+| 3 | Consulta externa com cache e tratamento de queda | `backend/app/externo.py` | 21 |
+| 4 | Do dado cru do OpenStreetMap para um ponto de coleta | `backend/app/pontos.py` | 34 |
+| 5 | Todas as respostas de erro no mesmo formato (RFC 7807) | `backend/app/errors.py` | 34 |
+| 6 | As rotas do web service | `backend/app/main.py` | 44 |
+| 7 | A pagina consumindo o web service | `backend/app/web/app.js` | 48 |
 
 ---
 
-## 1. Rotas REST — cada transição é um POST para um sub-recurso
+## 1. De onde vem os pontos, e o que acontece quando o Overpass cai
 
-`backend/app/routers/manifestos.py`, linhas 41 a 53
-
-```python
-@router.post(
-    "",
-    response_model=ManifestoSaida,
-    status_code=status.HTTP_201_CREATED,
-    summary="Emite um manifesto (GERADOR)",
-)
-def emitir(dados: ManifestoCriar, sessao: Sessao, usuario: UsuarioAtual) -> Manifesto:
-    """Emite um manifesto em nome da organização do usuário.
-
-    O gerador não é informado no corpo: é a organização de quem emite. Os
-    participantes são validados quanto a papel, situação e licença (RN04).
-    """
-    return servico.emitir(sessao, usuario, dados)
-```
-
-`backend/app/routers/manifestos.py`, linhas 182 a 203
+`backend/app/pontos.py`, linhas 151 a 177
 
 ```python
-@router.post(
-    "/{manifesto_id}/coleta",
-    response_model=ManifestoSaida,
-    summary="Confirma a coleta (TRANSPORTADOR)",
-)
-def confirmar_coleta(
-    manifesto_id: int, dados: ColetaEntrada, sessao: Sessao, usuario: UsuarioAtual
-) -> Manifesto:
-    """EMITIDO → EM_TRANSPORTE, registrando veículo e motorista."""
-    return servico.confirmar_coleta(sessao, usuario, manifesto_id, dados)
+def _elementos_do_osm(latitude: float, longitude: float, raio_km: int) -> tuple[list[dict], str]:
+    """Devolve os elementos do OpenStreetMap e um aviso, se o dado nao for atual."""
+    global _ultima_falha_overpass
+    chave = f"overpass:{latitude:.3f},{longitude:.3f},{raio_km}"
+    guardado = cache.obter(chave)
+    if guardado and time.time() - guardado[1] < config.VALIDADE_PONTOS:
+        return guardado[0], ""
 
+    # Logo depois de uma falha nao adianta esperar o tempo limite de novo.
+    if time.monotonic() - _ultima_falha_overpass >= config.ESPERA_APOS_FALHA_OVERPASS:
+        try:
+            elementos = _perguntar_ao_overpass(latitude, longitude, raio_km)
+            cache.guardar(chave, elementos)
+            return elementos, ""
+        except FalhaExterna:
+            _ultima_falha_overpass = time.monotonic()
 
-@router.post(
-    "/{manifesto_id}/recebimento",
-    response_model=ManifestoSaida,
-    summary="Registra o recebimento da carga (DESTINADOR)",
-)
-def registrar_recebimento(
-    manifesto_id: int, dados: RecebimentoEntrada, sessao: Sessao, usuario: UsuarioAtual
-) -> Manifesto:
-    """EM_TRANSPORTE → RECEBIDO, conferindo a quantidade de cada item (RN05)."""
-    return servico.registrar_recebimento(sessao, usuario, manifesto_id, dados)
+    if guardado:
+        data = datetime.fromtimestamp(guardado[1]).strftime("%d/%m/%Y")
+        return guardado[0], f"O OpenStreetMap não respondeu. Estes pontos são da consulta de {data}."
+
+    copia = _copia_de_reserva()
+    if copia is None:
+        return [], "O OpenStreetMap não respondeu. Só os pontos da lista do projeto aparecem aqui."
+
+    data = date.fromisoformat(copia["gerado_em"]).strftime("%d/%m/%Y")
+    return copia["elementos"], f"O OpenStreetMap não respondeu. Estes pontos são da cópia de {data}."
 ```
 
 ---
 
-## 2. A máquina de estados do manifesto
+## 2. Do CEP ate as coordenadas, da busca mais precisa para a menos precisa
 
-`backend/app/services/manifestos.py`, linhas 67 a 79
-
-```python
-TRANSICOES: dict[StatusManifesto, dict[StatusManifesto, PapelOrganizacao]] = {
-    StatusManifesto.EMITIDO: {
-        StatusManifesto.EM_TRANSPORTE: PapelOrganizacao.TRANSPORTADOR,
-        StatusManifesto.CANCELADO: PapelOrganizacao.GERADOR,
-    },
-    StatusManifesto.EM_TRANSPORTE: {
-        StatusManifesto.RECEBIDO: PapelOrganizacao.DESTINADOR,
-        StatusManifesto.RECUSADO: PapelOrganizacao.DESTINADOR,
-    },
-    StatusManifesto.RECEBIDO: {
-        StatusManifesto.DESTINADO: PapelOrganizacao.DESTINADOR,
-    },
-}
-```
-
-`backend/app/services/manifestos.py`, linhas 166 a 215
+`backend/app/localizacao.py`, linhas 125 a 147
 
 ```python
-def _aplicar_transicao(
-    sessao: Session,
-    usuario: Usuario,
-    manifesto: Manifesto,
-    novo_status: StatusManifesto,
-    observacao: str | None = None,
-) -> None:
-    """Muda o status do manifesto, validando e registrando a mudanca.
+def origem_por_cep(cep: str) -> dict:
+    endereco = endereco_do_cep(cep)
+    cidade = endereco["localidade"]
+    rua = endereco.get("logradouro", "")
+    bairro = endereco.get("bairro", "")
 
-    Unico ponto do sistema que altera `manifesto.status`. Toda transicao passa
-    por aqui, e por isso as regras RN02 e RN03 valem sempre, sem depender de
-    cada rota se lembrar de aplica-las.
+    tentativas = []
+    if rua:
+        tentativas.append(("endereço", {"street": rua, "city": cidade}))
+    if bairro:
+        tentativas.append(("bairro", {"q": f"{bairro}, {cidade}, Goiás"}))
+    tentativas.append(("município", {"city": cidade}))
 
-    A movimentacao e gravada na mesma sessao da mudanca de status: as duas vao
-    para o banco no mesmo `commit`, ou nenhuma vai. Nao existe status alterado
-    sem registro no historico.
-    """
-    destinos_permitidos = TRANSICOES.get(manifesto.status, {})
+    for precisao, params in tentativas:
+        try:
+            coordenadas = _geocodificar(**params)
+        except ServicoIndisponivel:
+            # Sem Nominatim, o centro do municipio informado pelo IBGE ainda serve.
+            break
+        if coordenadas:
+            return _origem(_descrever(rua, bairro, cidade), coordenadas, precisao)
 
-    # Regra RN02.
-    if novo_status not in destinos_permitidos:
-        if not destinos_permitidos:
-            detalhe = (
-                f"O manifesto {manifesto.numero} está {manifesto.status.value}, "
-                f"que é um estado final, e não admite novas alterações."
-            )
-        else:
-            possiveis = ", ".join(sorted(status.value for status in destinos_permitidos))
-            detalhe = (
-                f"O manifesto {manifesto.numero} está {manifesto.status.value} e não "
-                f"pode ir para {novo_status.value}. Transições possíveis: {possiveis}."
-            )
-        raise TransicaoInvalida(detalhe)
-
-    # Regra RN01.
-    _exigir_papel(usuario, manifesto, destinos_permitidos[novo_status])
-
-    status_anterior = manifesto.status
-    manifesto.status = novo_status
-
-    # Regra RN03.
-    sessao.add(
-        Movimentacao(
-            manifesto_id=manifesto.id,
-            status_anterior=status_anterior,
-            status_novo=novo_status,
-            usuario_id=usuario.id,
-            observacao=observacao,
-        )
-    )
+    return _origem(_descrever(rua, bairro, cidade), _centro_ibge(endereco["ibge"]), "município")
 ```
 
 ---
 
-## 3. Todo erro responde no formato RFC 7807
+## 3. Consulta externa com cache e tratamento de queda
 
-`backend/app/errors.py`, linhas 172 a 195
-
-```python
-def _resposta_problema(
-    request: Request,
-    *,
-    status: int,
-    codigo: str,
-    titulo: str,
-    detalhe: str,
-    erros: list[dict] | None = None,
-) -> JSONResponse:
-    """Monta a resposta de erro no formato RFC 7807.
-
-    Unico ponto do projeto que constroi corpo de erro. Centralizar aqui e o
-    que garante que todas as respostas tenham a mesma forma.
-    """
-    corpo = {
-        "type": _uri_do_tipo(codigo),
-        "title": titulo,
-        "status": status,
-        "detail": detalhe,
-        "instance": request.url.path,
-        "codigo": codigo,
-        "erros": erros or [],
-    }
-    return JSONResponse(status_code=status, content=corpo, media_type=MIDIA_PROBLEMA)
-```
-
-`backend/app/errors.py`, linhas 241 a 252
+`backend/app/externo.py`, linhas 41 a 61
 
 ```python
-    @app.exception_handler(ErroDominio)
-    async def _dominio(request: Request, exc: ErroDominio) -> JSONResponse:
-        """Erros previstos: a mensagem vai inteira para o cliente."""
-        logger.info("[%s] %s - %s", request.url.path, exc.codigo, exc.detalhe)
-        return _resposta_problema(
-            request,
-            status=exc.status,
-            codigo=exc.codigo,
-            titulo=exc.titulo,
-            detalhe=exc.detalhe,
-            erros=exc.erros,
-        )
-```
+def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
+    """Devolve o dado do cache ou da API; se a API falhar, usa o cache vencido.
 
----
-
-## 4. Serviço SOAP escrito à mão — leitura do envelope e SOAP Fault
-
-`backend/app/soap/envelope.py`, linhas 44 a 96
-
-```python
-def _leitor_seguro() -> etree.XMLParser:
-    """Cria o leitor de XML com as defesas necessarias ligadas.
-
-    XML aceita declarar entidades que o leitor expande ao processar o
-    documento. Um atacante pode usar isso para fazer o servidor ler arquivos
-    locais ou abrir conexoes de rede - os ataques conhecidos como XXE
-    (XML External Entity) e "billion laughs".
-
-    Como este endpoint recebe XML de fora, as tres defesas sao obrigatorias:
-    nao resolver entidades, nao carregar DTD e nao acessar a rede.
-    """
-    return etree.XMLParser(resolve_entities=False, load_dtd=False, no_network=True)
-
-
-def extrair_operacao(mensagem: bytes) -> tuple[str, dict[str, str]]:
-    """Le o envelope recebido e devolve o nome da operacao e seus parametros.
-
-    Devolve, para o exemplo do inicio do modulo:
-
-        ("ConsultarStatusManifesto",
-         {"numero": "RGO-2026-000001", "cnpj_consultante": "11222333000181"})
-
-    A operacao e identificada pelo nome do elemento dentro do `Body`, e nao
-    pelo cabecalho HTTP `SOAPAction`: o cabecalho e opcional em muitos
-    clientes, enquanto o elemento esta sempre presente.
-    """
-    try:
-        envelope = etree.fromstring(mensagem, parser=_leitor_seguro())
-    except etree.XMLSyntaxError as erro:
-        raise EnvelopeInvalido(f"XML mal formado: {erro}") from erro
-
-    if etree.QName(envelope).localname != "Envelope":
-        raise EnvelopeInvalido("O elemento raiz da mensagem deve ser soap:Envelope.")
-
-    corpo = envelope.find(f"{{{NS_SOAP}}}Body")
-    if corpo is None:
-        raise EnvelopeInvalido("O envelope não contém soap:Body.")
-
-    # `len()` em um elemento lxml conta os filhos, nao caracteres.
-    elementos = [filho for filho in corpo if isinstance(filho.tag, str)]
-    if not elementos:
-        raise EnvelopeInvalido("O soap:Body está vazio: nenhuma operação foi informada.")
-
-    chamada = elementos[0]
-    operacao = etree.QName(chamada).localname
-
-    parametros = {
-        etree.QName(parametro).localname: (parametro.text or "").strip()
-        for parametro in chamada
-        if isinstance(parametro.tag, str)
-    }
-
-    return operacao, parametros
-```
-
-`backend/app/soap/envelope.py`, linhas 131 a 158
-
-```python
-def montar_falha(mensagem: str, codigo: str, *, culpa_do_cliente: bool = True) -> bytes:
-    """Monta um SOAP Fault, a forma padrao de relatar erro em SOAP.
-
-    O `faultcode` tem valores definidos pela especificacao: `soap:Client`
-    quando a mensagem recebida esta errada (manifesto inexistente, CNPJ sem
-    permissao) e `soap:Server` quando a falha e do servidor. E o equivalente a
-    diferenca entre os codigos HTTP 4xx e 5xx.
-
-    Os tres elementos `faultcode`, `faultstring` e `detail` nao levam
-    namespace: no SOAP 1.1 eles sao deliberadamente sem qualificacao.
-
-    Dentro de `detail` vai o codigo interno do erro, o mesmo vocabulario
-    usado pelas respostas REST (`codigo` na RFC 7807), para que os dois
-    servicos relatem o mesmo problema com o mesmo nome.
-    """
-    envelope, corpo = _novo_envelope()
-    falha = etree.SubElement(corpo, f"{{{NS_SOAP}}}Fault")
-
-    # O conteudo e um QName: o prefixo "soap" ja esta declarado no envelope.
-    etree.SubElement(falha, "faultcode").text = "soap:Client" if culpa_do_cliente else "soap:Server"
-    etree.SubElement(falha, "faultstring").text = mensagem
-
-    detalhe = etree.SubElement(falha, "detail")
-    erro = etree.SubElement(detalhe, f"{{{NS_SERVICO}}}ManifestoFault")
-    etree.SubElement(erro, f"{{{NS_SERVICO}}}codigo").text = codigo
-    etree.SubElement(erro, f"{{{NS_SERVICO}}}mensagem").text = mensagem
-
-    return _serializar(envelope)
-```
-
----
-
-## 5. Consumo do serviço SOAP com zeep — nenhum XML no código
-
-`clients/soap_client.py`, linhas 32 a 72
-
-```python
-def consultar(url_wsdl: str, numero: str, cnpj: str) -> int:
-    """Consulta um manifesto e imprime o resultado.
-
-    Devolve o codigo de saida do processo: 0 em caso de sucesso e 1 em caso de
-    falha, para que o script possa ser usado dentro de outro automatismo.
-    """
-    print(f"Lendo o contrato em {url_wsdl}")
-
-    try:
-        cliente = Client(url_wsdl)
-    except Exception as erro:
-        print(f"\nNão foi possível ler o WSDL: {erro}", file=sys.stderr)
-        print("O servidor está rodando? (uvicorn app.main:app)", file=sys.stderr)
-        return 1
-
-    print(f"Consultando o manifesto {numero} como o CNPJ {cnpj}\n")
-
-    try:
-        # Chamada da operacao descrita no WSDL. Os nomes dos argumentos sao os
-        # mesmos declarados no XML Schema do contrato.
-        resposta = cliente.service.ConsultarStatusManifesto(
-            numero=numero,
-            cnpj_consultante=cnpj,
-        )
-    except Fault as falha:
-        # Um SOAP Fault chega ao Python como excecao. `message` traz o
-        # `faultstring` e `code`, o `faultcode` - o equivalente SOAP de um
-        # erro 4xx/5xx do REST.
-        print("O serviço respondeu com um SOAP Fault:")
-        print(f"  código   : {falha.code}")
-        print(f"  mensagem : {falha.message}")
-        return 1
-
-    print("Manifesto encontrado:")
-    print(f"  número          : {resposta.numero}")
-    print(f"  status          : {resposta.status}")
-    print(f"  gerador         : {resposta.gerador_razao_social}")
-    print(f"  destinador      : {resposta.destinador_razao_social}")
-    print(f"  tipo destinação : {resposta.tipo_destinacao or '(ainda não destinado)'}")
-    print(f"  atualizado em   : {resposta.atualizado_em}")
-    return 0
-```
-
----
-
-## 6. Integração externa — cache, queda tratada e procedência do dado
-
-`backend/app/integrations/externo.py`, linhas 130 a 172
-
-```python
-def obter_com_cache(
-    *,
-    cache: CacheComValidade,
-    chave: str,
-    ttl_segundos: int,
-    servico: str,
-    consultar: Callable[[], Dado],
-) -> tuple[Dado, Fonte]:
-    """Devolve o dado e a sua procedencia, nesta ordem de preferencia:
-
-    1. cache dentro da validade, sem chamar a API;
-    2. resposta nova da API, que passa a ser o cache;
-    3. ultimo cache guardado, mesmo vencido, quando a API falha;
-    4. erro 503, quando a API falha e nao ha nada guardado.
-
-    `consultar` e a funcao que faz a chamada e converte a resposta para o
-    formato do sistema - e esse formato convertido que vai para o cache, nao o
-    JSON cru do terceiro.
-
-    Erros de dominio levantados por `consultar` atravessam esta funcao sem
-    tratamento. Um CEP inexistente, por exemplo, nao e falha de comunicacao: a
-    API respondeu, e a resposta correta foi "nao existe". Servir cache naquele
-    caso esconderia uma informacao verdadeira.
+    Sem API e sem cache, a busca nao tem como continuar e o cliente recebe 503.
     """
     guardado = cache.obter(chave)
-    if guardado is not None:
-        return guardado, Fonte.CACHE
+    if guardado and time.time() - guardado[1] < validade:
+        return guardado[0]
 
     try:
         dado = consultar()
-    except FalhaDeComunicacao as falha:
-        reserva = cache.obter_ultimo(chave)
-        if reserva is None:
-            raise ServicoExternoIndisponivel(
-                f"{servico} está indisponível e não há dado guardado em cache "
-                "para responder. Tente novamente em alguns instantes."
-            ) from falha
+    except FalhaExterna as falha:
+        logger.warning("Falha externa: %s", falha)
+        if guardado:
+            return guardado[0]
+        raise ServicoIndisponivel(
+            f"O serviço {servico} não respondeu. Tente novamente em alguns instantes."
+        ) from falha
 
-        logger.warning("%s indisponível (%s); servindo cache vencido.", servico, falha)
-        return reserva, Fonte.CACHE_EXPIRADO
+    cache.guardar(chave, dado)
+    return dado
+```
 
-    cache.guardar(chave, dado, ttl_segundos)
-    return dado, Fonte.API
+---
+
+## 4. Do dado cru do OpenStreetMap para um ponto de coleta
+
+`backend/app/pontos.py`, linhas 45 a 78
+
+```python
+def ponto_do_elemento(elemento: dict) -> dict | None:
+    """Converte um elemento do OpenStreetMap, ou devolve None se ele nao serve."""
+    etiquetas = elemento.get("tags", {})
+    latitude = elemento.get("lat", elemento.get("center", {}).get("lat"))
+    longitude = elemento.get("lon", elemento.get("center", {}).get("lon"))
+    nome = etiquetas.get("name") or etiquetas.get("operator") or ""
+
+    if latitude is None or longitude is None:
+        return None
+    if etiquetas.get("access") in ("private", "no") or NOMES_EXCLUIDOS.search(nome):
+        return None
+    # A maioria das estacoes de transbordo sem nome e area de aterro, nao ponto de entrega.
+    e_transbordo = etiquetas.get("amenity") == "waste_transfer_station"
+    if e_transbordo and not nome:
+        return None
+
+    materiais = materiais_das_etiquetas(etiquetas)
+    agrotoxico = bool(NOMES_DE_AGROTOXICOS.search(nome))
+    if agrotoxico:
+        materiais = ["agrotoxicos"]
+
+    tipo = _tipo(nome, etiquetas, e_transbordo, agrotoxico)
+    return {
+        "nome": nome or f"{tipo} (sem nome no mapa)",
+        "tipo": tipo,
+        "endereco": _endereco(etiquetas),
+        "latitude": latitude,
+        "longitude": longitude,
+        "materiais": materiais,
+        "telefone": etiquetas.get("phone") or etiquetas.get("contact:phone") or "",
+        "horario": etiquetas.get("opening_hours", ""),
+        "observacao": "",
+        "fonte": "OpenStreetMap",
+    }
+```
+
+---
+
+## 5. Todas as respostas de erro no mesmo formato (RFC 7807)
+
+`backend/app/errors.py`, linhas 42 a 75
+
+```python
+def _problema(request: Request, status: int, titulo: str, detalhe: str) -> JSONResponse:
+    return JSONResponse(
+        status_code=status,
+        media_type="application/problem+json",
+        content={
+            "type": "about:blank",
+            "title": titulo,
+            "status": status,
+            "detail": detalhe,
+            "instance": request.url.path,
+        },
+    )
+
+
+def registrar_handlers(app: FastAPI) -> None:
+    @app.exception_handler(ErroDaBusca)
+    async def _erro_da_busca(request: Request, exc: ErroDaBusca) -> JSONResponse:
+        return _problema(request, exc.status, exc.titulo, exc.detalhe)
+
+    @app.exception_handler(RequestValidationError)
+    async def _validacao(request: Request, exc: RequestValidationError) -> JSONResponse:
+        campos = ", ".join(str(erro["loc"][-1]) for erro in exc.errors())
+        return _problema(request, 422, "Dados inválidos", f"Valor inválido em: {campos}.")
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        if exc.status_code == 404:
+            return _problema(request, 404, "Não encontrado", "Este endereço não existe.")
+        return _problema(request, exc.status_code, "Erro na requisição", "A requisição não foi aceita.")
+
+    @app.exception_handler(Exception)
+    async def _inesperado(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception("Falha inesperada em %s", request.url.path)
+        return _problema(request, 500, "Erro interno", "Ocorreu uma falha inesperada no servidor.")
+```
+
+---
+
+## 6. As rotas do web service
+
+`backend/app/main.py`, linhas 37 a 80
+
+```python
+def _consultar(cep: str | None, municipio: str | None, raio_km: int, material: str | None) -> dict:
+    if bool(cep) == bool(municipio):
+        raise DadosInvalidos("Informe o CEP ou o município, um dos dois.")
+    if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
+        raise DadosInvalidos(
+            f"A distância precisa ficar entre {config.RAIO_MINIMO_KM} e {config.RAIO_MAXIMO_KM} km."
+        )
+    if material and material not in MATERIAIS:
+        raise DadosInvalidos(f"O material {material} não existe. Veja a lista em /api/materiais.")
+
+    if cep:
+        origem = localizacao.origem_por_cep(localizacao.limpar_cep(cep))
+    else:
+        origem = localizacao.origem_por_municipio(municipio)
+
+    encontrados, avisos = pontos.buscar(origem["latitude"], origem["longitude"], raio_km, material)
+    return {
+        "origem": origem,
+        "raio_km": raio_km,
+        "material": material or None,
+        "total": len(encontrados),
+        "pontos": encontrados,
+        "avisos": avisos,
+    }
+
+
+@app.get("/api/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
+def listar_municipios() -> list[dict]:
+    return localizacao.municipios()
+
+
+@app.get("/api/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
+def listar_materiais() -> list[dict]:
+    return para_saida(list(MATERIAIS))
+
+
+@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP ou município")
+def buscar_pontos(
+    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
+    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
+    raio_km: int = Query(10, description="Distância máxima, em km."),
+    material: str | None = Query(None, description="Chave de um item de /api/materiais."),
+) -> dict:
+    return _consultar(cep, municipio, raio_km, material)
+```
+
+---
+
+## 7. A pagina consumindo o web service
+
+`backend/app/web/app.js`, linhas 29 a 76
+
+```js
+async function chamarApi(caminho) {
+  let resposta;
+  try {
+    resposta = await fetch(caminho);
+  } catch {
+    throw new Error("O servidor do ResíduoGO não respondeu. Verifique se ele está ligado.");
+  }
+  const corpo = await resposta.json().catch(() => null);
+  if (!resposta.ok) {
+    throw new Error(corpo?.detail ?? "A consulta falhou. Tente novamente.");
+  }
+  return corpo;
+}
+
+function parametrosDaBusca() {
+  const parametros = new URLSearchParams({ raio_km: campoRaio.value });
+  if (campoCep.value.trim()) parametros.set("cep", campoCep.value.trim());
+  if (campoMunicipio.value) parametros.set("municipio", campoMunicipio.value);
+  if (campoMaterial.value) parametros.set("material", campoMaterial.value);
+  return parametros;
+}
+
+async function buscar(evento) {
+  evento.preventDefault();
+
+  if (!campoCep.value.trim() && !campoMunicipio.value) {
+    mostrarMensagem("Informe um CEP ou escolha um município.", true);
+    campoCep.focus();
+    return;
+  }
+
+  botao.disabled = true;
+  botao.textContent = "Buscando...";
+  mostrarMensagem("Consultando os pontos. Pode levar alguns segundos.");
+
+  try {
+    const parametros = parametrosDaBusca();
+    const dados = await chamarApi(`/api/pontos?${parametros}`);
+    mostrarMensagem("");
+    mostrarResultado(dados, parametros);
+  } catch (erro) {
+    areaResultado.hidden = true;
+    mostrarMensagem(erro.message, true);
+  } finally {
+    botao.disabled = false;
+    botao.textContent = "Buscar pontos";
+  }
+}
 ```
