@@ -18,7 +18,7 @@ LIMITE_DE_LINHAS = 380  # cerca de 10 paginas em Arial 12, espacamento 1,5
 
 def coletar() -> dict[int, tuple[str, Path, list[str]]]:
     trechos = {}
-    for arquivo in [*sorted((RAIZ / "app").glob("*.py")), RAIZ / "web" / "app.js"]:
+    for arquivo in [*sorted((RAIZ / "app").rglob("*.py")), RAIZ / "web" / "app.js"]:
         aberto = None
         for linha in arquivo.read_text("utf-8").splitlines():
             if marca := INICIO.fullmatch(linha):

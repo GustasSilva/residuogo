@@ -129,19 +129,29 @@ Os testes não usam a internet: as APIs externas são simuladas.
 
 ```
 app/
-  main.py          rotas do web service
-  pontos.py        a busca dos pontos: consulta o Nominatim, filtra e ordena
-  localizacao.py   entende o local digitado ou clicado (IBGE, ViaCEP e Nominatim)
-  materiais.py     materiais e etiquetas do OpenStreetMap
-  externo.py       chamadas HTTP e cache
-  erros.py         respostas de erro (RFC 7807)
-  schemas.py       formato das respostas
-  config.py        endereços, prazos e tempos limite
-web/               página (HTML, CSS e JavaScript)
-scripts/           extração dos trechos de código para o relatório
+  main.py              monta a aplicação: rotas, erros e a página
+  config.py            endereços, prazos e tempos limite
+  erros.py             respostas de erro (RFC 7807)
+  rotas/
+    api.py             as 5 rotas do web service (JSON e CSV)
+    schemas.py         formato das respostas, usado também em /docs
+  servicos/
+    localizacao.py     entende o local digitado ou clicado
+    pontos.py          pede os pontos, converte, filtra e ordena
+    materiais.py       materiais e etiquetas do OpenStreetMap
+    geo.py             distância (Haversine) e retângulos de busca
+  apis/
+    ibge.py            municípios e contorno de Goiás
+    viacep.py          endereço do CEP
+    nominatim.py       coordenadas, pontos em volta e estado de um lugar
+    cache.py           chamada HTTP com tempo limite e cache em SQLite
+web/                   página (HTML, CSS e JavaScript)
+scripts/               extração dos trechos de código para o relatório
 tests/
-docs/              diagramas, telas e trechos para o relatório
+docs/                  diagramas, telas e trechos para o relatório
 ```
+
+O código fica em três camadas, e cada uma só chama a de baixo: as rotas chamam os serviços, os serviços chamam as APIs, e toda consulta a uma API passa pelo cache. A única exceção é o contorno de Goiás, que não tem regra nenhuma e vai da API do IBGE direto para a rota.
 
 ## Relatório da APS
 

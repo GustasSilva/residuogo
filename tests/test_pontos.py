@@ -3,7 +3,8 @@
 import pytest
 
 from app import config
-from app.pontos import RAIO_DOS_MAIS_PROXIMOS_KM, _caixa, buscar, distancia_km, ponto_do_lugar
+from app.servicos.geo import caixa_em_volta, distancia_km, no_retangulo
+from app.servicos.pontos import RAIO_DOS_MAIS_PROXIMOS_KM, buscar, ponto_do_lugar
 from tests.conftest import lugar
 
 
@@ -16,10 +17,23 @@ def test_distancia_entre_goiania_e_anapolis():
 
 
 def test_caixa_cobre_o_circulo_da_busca():
-    oeste, norte, leste, sul = map(float, _caixa(-16.70, -49.27, 10).split(","))
+    oeste, norte, leste, sul = map(float, caixa_em_volta(-16.70, -49.27, 10).split(","))
     assert distancia_km(-16.70, -49.27, norte, -49.27) == pytest.approx(10, abs=0.1)
     assert distancia_km(-16.70, -49.27, -16.70, leste) == pytest.approx(10, abs=0.1)
     assert oeste < leste and sul < norte
+
+
+@pytest.mark.parametrize(
+    ("latitude", "longitude", "esperado"),
+    [
+        (-16.70, -49.27, True),  # Goiania
+        (-10.20, -48.33, False),  # Palmas, TO
+        (float("nan"), -49.27, False),
+        (float("inf"), -49.27, False),
+    ],
+)
+def test_retangulo_de_goias(latitude, longitude, esperado):
+    assert no_retangulo(latitude, longitude, config.CAIXA_DE_GOIAS) is esperado
 
 
 # --- Conversao ---
@@ -97,7 +111,7 @@ def test_resultado_vem_do_mais_perto_para_o_mais_longe(nominatim):
 def test_busca_pergunta_pela_caixa_do_raio(nominatim):
     buscar(-16.79, -50.92, 5, None)
     pedido = next(busca for busca in nominatim.buscas if busca["q"] == "[amenity=recycling]")
-    assert pedido["viewbox"] == _caixa(-16.79, -50.92, 5)
+    assert pedido["viewbox"] == caixa_em_volta(-16.79, -50.92, 5)
     assert (pedido["bounded"], pedido["extratags"], pedido["addressdetails"]) == ("1", "1", "1")
 
 
@@ -131,7 +145,7 @@ def test_sem_ponto_no_raio_mostra_os_mais_proximos_numa_area_maior(nominatim):
     assert resultado["fora_do_raio"] is True
     assert nomes(resultado) == ["Ponto 0", "Ponto 1", "Ponto 2"]
     caixas = [busca["viewbox"] for busca in nominatim.buscas if busca["q"] == "[amenity=recycling]"]
-    assert caixas == [_caixa(-13.50, -47.00, 5), _caixa(-13.50, -47.00, RAIO_DOS_MAIS_PROXIMOS_KM)]
+    assert caixas == [caixa_em_volta(-13.50, -47.00, 5), caixa_em_volta(-13.50, -47.00, RAIO_DOS_MAIS_PROXIMOS_KM)]
 
 
 def test_os_mais_proximos_respeitam_o_material(nominatim):

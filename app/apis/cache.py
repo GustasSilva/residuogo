@@ -1,4 +1,7 @@
-"""Como o projeto fala com as APIs externas: HTTP com tempo limite e cache em arquivo."""
+"""Como o projeto fala com as APIs externas: HTTP com tempo limite e cache em arquivo.
+
+Todas as consultas desta pasta passam por aqui.
+"""
 
 import json
 import logging
@@ -34,12 +37,6 @@ def obter_json(url: str, servico: str, params: dict | None = None) -> Any:
         raise FalhaExterna(f"{servico}: {type(erro).__name__}") from erro
 
 
-def consultar_nominatim(rota: str, params: dict) -> Any:
-    """`rota` e "search" (texto para lugares) ou "reverse" (coordenadas para lugar)."""
-    time.sleep(1)  # o Nominatim pede no maximo uma chamada por segundo
-    return obter_json(f"{config.URL_NOMINATIM}/{rota}", "Nominatim", {**params, "format": "jsonv2"})
-
-
 # --- Cache ---
 # Fica em arquivo para sobreviver ao reinicio do servidor.
 
@@ -53,7 +50,7 @@ def _conectar() -> sqlite3.Connection:
     return conexao
 
 
-def guardar_no_cache(chave: str, valor: Any) -> None:
+def _guardar(chave: str, valor: Any) -> None:
     with closing(_conectar()) as conexao, conexao:
         conexao.execute(
             "INSERT OR REPLACE INTO cache (chave, valor, guardado_em) VALUES (?, ?, ?)",
@@ -61,7 +58,7 @@ def guardar_no_cache(chave: str, valor: Any) -> None:
         )
 
 
-def ler_do_cache(chave: str) -> tuple[Any, float] | None:
+def _ler(chave: str) -> tuple[Any, float] | None:
     """Devolve (valor, momento em que foi guardado), mesmo que ja esteja vencido."""
     with closing(_conectar()) as conexao:
         linha = conexao.execute(
@@ -76,7 +73,7 @@ def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], A
 
     Sem API e sem cache, a busca nao tem como continuar e o cliente recebe 503.
     """
-    guardado = ler_do_cache(chave)
+    guardado = _ler(chave)
     if guardado and time.time() - guardado[1] < validade:
         return guardado[0]
 
@@ -90,6 +87,6 @@ def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], A
             f"O serviço {servico} não respondeu. Tente novamente em alguns instantes."
         ) from falha
 
-    guardar_no_cache(chave, dado)
+    _guardar(chave, dado)
     return dado
 # APS-FIM

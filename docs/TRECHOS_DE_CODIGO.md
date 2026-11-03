@@ -2,11 +2,11 @@
 
 Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
-8 trechos, 290 linhas. O limite é de cerca de 380 linhas.
+9 trechos, 291 linhas. O limite é de cerca de 380 linhas.
 
 ## 1. As rotas do web service
 
-`app/main.py`
+`app/rotas/api.py`
 
 ```python
 def _consultar(
@@ -42,12 +42,12 @@ def _consultar(
     }
 
 
-@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um local ou ponto no mapa")
+@router.get("/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um local ou ponto no mapa")
 def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 
 
-@app.get("/api/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
+@router.get("/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
 def exportar_pontos(resultado: dict = Depends(_consultar)) -> Response:
     return Response(
         content=_planilha(resultado["pontos"]),
@@ -56,26 +56,37 @@ def exportar_pontos(resultado: dict = Depends(_consultar)) -> Response:
     )
 
 
-@app.get("/api/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
+@router.get("/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
 def listar_municipios() -> list[dict]:
     return localizacao.municipios()
 
 
-@app.get("/api/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
+@router.get("/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
 def listar_materiais() -> list[dict]:
     return para_saida(list(MATERIAIS))
 
 
-@app.get("/api/goias", summary="Contorno oficial de Goiás (IBGE), em GeoJSON")
+@router.get("/goias", summary="Contorno oficial de Goiás (IBGE), em GeoJSON")
 def contorno_de_goias() -> JSONResponse:
-    return JSONResponse(localizacao.contorno_de_goias(), media_type="application/geo+json")
+    # Nao tem regra no meio: o contorno vai do IBGE direto para a pagina.
+    return JSONResponse(ibge.contorno_de_goias(), media_type="application/geo+json")
 ```
 
 ## 2. A busca dos pontos de coleta
 
-`app/pontos.py`
+`app/servicos/pontos.py`
 
 ```python
+def _lugares(caixa: str) -> list[dict]:
+    """Pontos de reciclagem da area e ecopontos do estado, sem repetir o mesmo lugar."""
+    encontrados = [
+        *nominatim.procurar("[amenity=recycling]", caixa),
+        # Os ecopontos sao poucos e nem sempre tem a etiqueta de reciclagem: vem pelo nome.
+        *nominatim.procurar("ecoponto", config.CAIXA_DE_GOIAS),
+    ]
+    return list({(lugar["osm_type"], lugar["osm_id"]): lugar for lugar in encontrados}.values())
+
+
 def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, material: str | None) -> list[dict]:
     """Pontos ate raio_km que servem para o material, do mais perto para o mais longe.
 
@@ -83,7 +94,7 @@ def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, materia
     aceitam: a tela avisa a pessoa para confirmar antes de ir.
     """
     resultado = []
-    for ponto in map(ponto_do_lugar, _lugares(_caixa(latitude, longitude, raio_km))):
+    for ponto in map(ponto_do_lugar, _lugares(caixa_em_volta(latitude, longitude, raio_km))):
         if not ponto or (material and ponto["materiais"] and material not in ponto["materiais"]):
             continue
         distancia = round(distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"]), 1)
@@ -105,7 +116,7 @@ def buscar(latitude: float, longitude: float, raio_km: int, material: str | None
 
 ## 3. Do texto digitado ate as coordenadas
 
-`app/localizacao.py`
+`app/servicos/localizacao.py`
 
 ```python
 def origem_por_texto(texto: str) -> dict:
@@ -141,8 +152,8 @@ def _origem_por_cep(cep: str) -> dict:
 
 
 def _origem_por_lugar(texto: str) -> dict:
-    for lugar in _lugares(texto):
-        if em_goias(lugar):
+    for lugar in nominatim.lugares(texto):
+        if nominatim.em_goias(lugar):
             # O nome vem como "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil".
             descricao = lugar["display_name"].split(", Goiás, Região")[0] + " - GO"
             latitude, longitude = float(lugar["lat"]), float(lugar["lon"])
@@ -153,51 +164,34 @@ def _origem_por_lugar(texto: str) -> dict:
 def _origem(descricao: str, tentativas: list[tuple[str, dict]]) -> dict:
     """Usa a primeira tentativa que o Nominatim encontrar em Goias."""
     for precisao, busca in tentativas:
-        coordenadas = _coordenadas(**busca)
+        coordenadas = nominatim.coordenadas(**busca)
         if coordenadas:
             latitude, longitude = coordenadas
             return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
     raise NaoEncontrado(f"Não encontramos {descricao} no mapa.")
 ```
 
-## 4. De onde vem os pontos
+## 4. A consulta dos pontos de coleta ao Nominatim
 
-`app/pontos.py`
+`app/apis/nominatim.py`
 
 ```python
-def _caixa(latitude: float, longitude: float, raio_km: float) -> str:
-    """Retangulo em volta do circulo da busca (oeste, norte, leste, sul). Um grau de latitude tem 111 km."""
-    graus_lat = raio_km / 111
-    graus_lon = raio_km / (111 * math.cos(math.radians(latitude)))
-    return f"{longitude - graus_lon:.4f},{latitude + graus_lat:.4f},{longitude + graus_lon:.4f},{latitude - graus_lat:.4f}"
-
-
-def _procurar(termo: str, caixa: str) -> list[dict]:
+def procurar(termo: str, caixa: str) -> list[dict]:
     """Lugares do OpenStreetMap dentro da caixa. `extratags` traz as etiquetas, como os materiais."""
     return com_cache(
         f"pontos:{termo}:{caixa}",
         config.VALIDADE_PONTOS,
         "Nominatim",
-        lambda: consultar_nominatim(
+        lambda: _consultar(
             "search",
             {"q": termo, "viewbox": caixa, "bounded": 1, "limit": 50, "addressdetails": 1, "extratags": 1},
         ),
     )
-
-
-def _lugares(caixa: str) -> list[dict]:
-    """Pontos de reciclagem da area e ecopontos do estado, sem repetir o mesmo lugar."""
-    encontrados = [
-        *_procurar("[amenity=recycling]", caixa),
-        # Os ecopontos sao poucos e nem sempre tem a etiqueta de reciclagem: vem pelo nome.
-        *_procurar("ecoponto", config.CAIXA_DE_GOIAS),
-    ]
-    return list({(lugar["osm_type"], lugar["osm_id"]): lugar for lugar in encontrados}.values())
 ```
 
 ## 5. Do resultado do Nominatim para um ponto de coleta
 
-`app/pontos.py`
+`app/servicos/pontos.py`
 
 ```python
 def ponto_do_lugar(lugar: dict) -> dict | None:
@@ -205,7 +199,7 @@ def ponto_do_lugar(lugar: dict) -> dict | None:
     etiquetas = lugar.get("extratags") or {}
     nome = lugar.get("name") or etiquetas.get("operator") or ""
 
-    if not em_goias(lugar) or lugar.get("category") != "amenity":
+    if not nominatim.em_goias(lugar) or lugar.get("category") != "amenity":
         return None
     if etiquetas.get("access") in ("private", "no") or NOMES_EXCLUIDOS.search(nome):
         return None
@@ -229,7 +223,7 @@ def ponto_do_lugar(lugar: dict) -> dict | None:
 
 ## 6. Consulta externa com cache e tratamento de queda
 
-`app/externo.py`
+`app/apis/cache.py`
 
 ```python
 def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
@@ -237,7 +231,7 @@ def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], A
 
     Sem API e sem cache, a busca nao tem como continuar e o cliente recebe 503.
     """
-    guardado = ler_do_cache(chave)
+    guardado = _ler(chave)
     if guardado and time.time() - guardado[1] < validade:
         return guardado[0]
 
@@ -251,7 +245,7 @@ def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], A
             f"O serviço {servico} não respondeu. Tente novamente em alguns instantes."
         ) from falha
 
-    guardar_no_cache(chave, dado)
+    _guardar(chave, dado)
     return dado
 ```
 
@@ -348,4 +342,18 @@ async function buscar(origem) {
     if (buscaEmAndamento === busca) indicarBusca(false);
   }
 }
+```
+
+## 9. Distancia em linha reta (formula de Haversine)
+
+`app/servicos/geo.py`
+
+```python
+def distancia_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Distancia em linha reta sobre a superficie da Terra, com raio medio de 6371 km."""
+    fi1, fi2 = math.radians(lat1), math.radians(lat2)
+    delta_fi = fi2 - fi1
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_fi / 2) ** 2 + math.cos(fi1) * math.cos(fi2) * math.sin(delta_lambda / 2) ** 2
+    return 6371 * 2 * math.asin(math.sqrt(a))
 ```

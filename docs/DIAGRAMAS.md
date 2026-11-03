@@ -4,34 +4,53 @@ Em Mermaid: o GitHub desenha direto, e em [mermaid.live](https://mermaid.live) d
 
 ## Componentes
 
+Cada camada só chama a de baixo. A exceção é o contorno de Goiás, que vai da API do IBGE direto para a rota.
+
 ```mermaid
-flowchart LR
+flowchart TB
     pagina["Página web<br/>HTML, CSS e JavaScript"]
 
     subgraph servico["Web service REST (FastAPI)"]
-        main["main.py<br/>rotas"]
-        pontos["pontos.py<br/>a busca dos pontos"]
-        localizacao["localizacao.py<br/>o local da busca"]
-        externo["externo.py<br/>HTTP e cache"]
-        cache[("cache.db<br/>SQLite")]
+        subgraph rotas["rotas/"]
+            api["api.py<br/>as 5 rotas"]
+        end
+        subgraph servicos["servicos/"]
+            localizacao["localizacao.py<br/>o local da busca"]
+            pontos["pontos.py<br/>os pontos de coleta"]
+            geo["geo.py<br/>Haversine e retângulos"]
+        end
+        subgraph apis["apis/"]
+            ibge["ibge.py"]
+            viacep["viacep.py"]
+            nominatim["nominatim.py"]
+            cache["cache.py<br/>HTTP e cache"]
+        end
+        banco[("cache.db<br/>SQLite")]
     end
 
-    ibge["IBGE<br/>municípios e contorno"]
-    viacep["ViaCEP"]
-    nominatim["Nominatim<br/>(OpenStreetMap)"]
+    api_ibge["API do IBGE<br/>municípios e contorno"]
+    api_viacep["API do ViaCEP"]
+    api_nominatim["API do Nominatim<br/>(OpenStreetMap)"]
     tiles["Mapa do OpenStreetMap"]
 
-    pagina -- "JSON e CSV" --> main
+    pagina -- "JSON e CSV" --> api
     pagina -- "imagens do mapa" --> tiles
-    main --> localizacao
-    main --> pontos
-    pontos -- "estado de cada lugar" --> localizacao
-    localizacao --> externo
-    pontos --> externo
-    externo --> cache
-    externo --> ibge
-    externo --> viacep
-    externo --> nominatim
+    api --> localizacao
+    api --> pontos
+    api -- "contorno" --> ibge
+    localizacao --> ibge
+    localizacao --> viacep
+    localizacao --> nominatim
+    pontos --> nominatim
+    localizacao --> geo
+    pontos --> geo
+    ibge --> cache
+    viacep --> cache
+    nominatim --> cache
+    cache --> banco
+    cache --> api_ibge
+    cache --> api_viacep
+    cache --> api_nominatim
 ```
 
 ## Busca por CEP

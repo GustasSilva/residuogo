@@ -49,7 +49,7 @@ def lugar(lat=-16.70, lon=-49.27, osm_id=1, nome="", tipo="recycling", estado="B
 def ambiente_limpo(tmp_path, monkeypatch):
     """Cada teste comeca com o cache vazio e sem a espera de um segundo do Nominatim."""
     monkeypatch.setattr(config, "ARQUIVO_CACHE", tmp_path / "cache.db")
-    monkeypatch.setattr("app.externo.time.sleep", lambda _: None)
+    monkeypatch.setattr("app.apis.nominatim.time.sleep", lambda _: None)
 
 
 @pytest.fixture

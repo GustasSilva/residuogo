@@ -280,7 +280,7 @@ def test_falha_inesperada_nao_vaza_detalhes(cliente, monkeypatch):
     def quebrar():
         raise RuntimeError("segredo interno")
 
-    monkeypatch.setattr("app.localizacao.municipios", quebrar)
+    monkeypatch.setattr("app.servicos.localizacao.municipios", quebrar)
     resposta = cliente.get("/api/municipios")
     assert resposta.status_code == 500
     assert "segredo" not in resposta.text
