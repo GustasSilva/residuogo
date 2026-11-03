@@ -16,7 +16,7 @@ import time
 from datetime import date
 
 from app import config
-from app.externo import FalhaExterna, enviar_consulta
+from app.externo import FalhaExterna, elementos_do_overpass, enviar_consulta
 
 TAMANHO_DO_QUADRO = 2.0  # graus
 RODADAS = 12
@@ -76,10 +76,11 @@ def main() -> int:
             servidor = config.SERVIDORES_OVERPASS[(rodada + indice) % len(config.SERVIDORES_OVERPASS)]
             try:
                 resposta = enviar_consulta(servidor, "Overpass", {"data": CONSULTA.format(caixa=caixa)}, 75)
+                elementos = elementos_do_overpass(resposta)
             except FalhaExterna as falha:
                 print(f"  {caixa} falhou em {servidor.split('/')[2]}: {falha}", flush=True)
                 continue
-            baixados[caixa] = [reduzir(elemento) for elemento in resposta["elements"]]
+            baixados[caixa] = [reduzir(elemento) for elemento in elementos]
             PROGRESSO.write_text(json.dumps(baixados, ensure_ascii=False), "utf-8")
             print(f"  {caixa}: {len(baixados[caixa])} pontos", flush=True)
         if len(baixados) < len(caixas):

@@ -16,7 +16,7 @@ from datetime import date, datetime
 from functools import lru_cache
 
 from app import cache, config
-from app.externo import FalhaExterna, enviar_consulta
+from app.externo import FalhaExterna, elementos_do_overpass, enviar_consulta
 from app.materiais import materiais_das_etiquetas, para_saida
 
 # Entidades que recebem embalagens de agrotoxicos: o OpenStreetMap nao informa o
@@ -136,9 +136,8 @@ def _perguntar_ao_overpass(latitude: float, longitude: float, raio_km: int) -> l
     try:
         for futuro in as_completed(futuros, timeout=limite):
             try:
-                resposta = futuro.result()
-                return resposta["elements"]
-            except (FalhaExterna, KeyError, TypeError):
+                return elementos_do_overpass(futuro.result())
+            except FalhaExterna:
                 continue
     except TempoEsgotado:
         pass

@@ -37,6 +37,16 @@ def enviar_consulta(url: str, servico: str, dados: dict, tempo_limite: float) ->
         raise FalhaExterna(f"{servico}: {type(erro).__name__}") from erro
 
 
+def elementos_do_overpass(resposta: Any) -> list[dict]:
+    """O Overpass pode responder 200 com o resultado pela metade e o erro em `remark`."""
+    try:
+        if "error" in resposta.get("remark", ""):
+            raise FalhaExterna(f"Overpass: {resposta['remark']}")
+        return resposta["elements"]
+    except (AttributeError, KeyError, TypeError) as erro:
+        raise FalhaExterna("Overpass: resposta em formato inesperado") from erro
+
+
 # APS-TRECHO 3: Consulta externa com cache e tratamento de queda
 def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
     """Devolve o dado do cache ou da API; se a API falhar, usa o cache vencido.

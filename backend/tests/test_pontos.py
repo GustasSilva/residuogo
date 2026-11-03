@@ -2,6 +2,7 @@
 
 import pytest
 
+from app import config
 from app.pontos import _remover_duplicatas, buscar, distancia_km, ponto_do_elemento
 from tests.conftest import derrubar_overpass, elemento, responder_overpass
 
@@ -142,9 +143,22 @@ def test_overpass_fora_do_ar_prefere_a_ultima_consulta_guardada(apis, monkeypatc
     assert "Estes pontos são da consulta de" in avisos[0]
 
 
-def test_um_servidor_fora_do_ar_nao_derruba_a_busca(apis):
-    from app import config
+def test_resposta_pela_metade_nao_vai_para_o_cache(apis, monkeypatch):
+    """O Overpass responde 200 quando estoura o tempo no meio da consulta."""
+    from app import cache
 
+    pela_metade = {"elements": [elemento(-17.79, -50.92, 1, name="Parcial")], "remark": "runtime error: Query timed out"}
+    for servidor in config.SERVIDORES_OVERPASS:
+        apis.post(servidor).respond(json=pela_metade)
+    monkeypatch.setattr("app.pontos._copia_de_reserva", lambda: {"gerado_em": "2026-11-02", "elementos": []})
+
+    encontrados, avisos = buscar(-17.79, -50.92, 10, None)
+    assert encontrados == []
+    assert "não respondeu" in avisos[0]
+    assert cache.obter("overpass:-17.790,-50.920,10") is None
+
+
+def test_um_servidor_fora_do_ar_nao_derruba_a_busca(apis):
     apis.post(config.SERVIDORES_OVERPASS[0]).respond(status_code=504)
     apis.post(config.SERVIDORES_OVERPASS[1]).respond(text="<html>sobrecarregado</html>")
     apis.post(config.SERVIDORES_OVERPASS[2]).respond(json={"elements": [elemento(-17.79, -50.92, 1, name="Respondeu")]})

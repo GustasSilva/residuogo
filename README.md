@@ -82,9 +82,9 @@ Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 Os servidores públicos do Overpass ficam sobrecarregados com frequência, então a busca foi feita para continuar sem eles:
 
 1. Toda resposta externa fica guardada em um cache em arquivo (`backend/cache.db`).
-2. A busca pergunta aos três servidores do Overpass ao mesmo tempo, espera até 12 segundos e usa a primeira resposta.
+2. A busca pergunta aos três servidores do Overpass ao mesmo tempo, espera até 20 segundos e usa a primeira resposta.
 3. Se nenhum responder, usa a última consulta guardada ou a cópia dos dados de Goiás que fica no projeto, e avisa na tela.
-4. Depois de uma falha, passa 2 minutos sem tentar o Overpass, para ninguém esperar os 12 segundos de novo.
+4. Depois de uma falha, passa 2 minutos sem tentar o Overpass, para ninguém esperar os 20 segundos de novo.
 5. Sem o Nominatim, as distâncias contam a partir do centro do município, informado pelo IBGE.
 
 Para atualizar a cópia, que fica em `backend/app/dados/osm_goias.json`:
