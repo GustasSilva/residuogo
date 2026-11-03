@@ -59,7 +59,7 @@ async function buscar(evento) {
 
   botao.disabled = true;
   botao.textContent = "Buscando...";
-  mostrarMensagem("Consultando os pontos. Pode levar até 20 segundos.");
+  mostrarMensagem("Consultando os pontos. Pode levar até 25 segundos.");
 
   try {
     const parametros = parametrosDaBusca();

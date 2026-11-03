@@ -68,7 +68,7 @@ flowchart TD
     inicio["Busca em uma coordenada"] --> cache{"Tem consulta<br/>de menos de 1 dia?"}
     cache -- sim --> usar["Usa a consulta guardada"]
     cache -- não --> falhou{"Overpass falhou<br/>nos últimos 2 minutos?"}
-    falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 20 s"]
+    falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 25 s"]
     perguntar --> respondeu{"Algum respondeu?"}
     respondeu -- sim --> guardar["Guarda no cache e usa"]
     respondeu -- não --> antiga{"Tem consulta<br/>antiga guardada?"}

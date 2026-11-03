@@ -20,7 +20,10 @@ def test_ponto_sem_etiqueta_de_material_fica_sem_materiais():
     assert ponto_do_elemento(elemento(name="Cooperativa"))["materiais"] == []
 
 
-@pytest.mark.parametrize("nome", ["inpEV Mineiros", "ADIAGO - Piracanjuba", "Associação de Defensivos Agrícolas"])
+@pytest.mark.parametrize(
+    "nome",
+    ["inpEV Mineiros", "ADIAGO - Piracanjuba", "Associação de Defensivos Agrícolas", "Associação dos Revendedores de Agrotóxicos"],
+)
 def test_central_de_agrotoxicos_e_reconhecida_pelo_nome(nome):
     ponto = ponto_do_elemento(elemento(name=nome, recycling_type="centre"))
     assert ponto["materiais"] == ["agrotoxicos"]
@@ -33,6 +36,7 @@ def test_central_de_agrotoxicos_e_reconhecida_pelo_nome(nome):
         {"name": "ATERRO SANITÁRIO", "amenity": "waste_transfer_station"},
         {"name": "Lixão de Goiandira"},
         {"amenity": "waste_transfer_station"},
+        {"name": "Usina Coruripe", "amenity": "waste_transfer_station"},
         {"name": "Centro privado", "access": "private"},
     ],
 )

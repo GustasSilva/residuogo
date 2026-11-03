@@ -3,14 +3,14 @@
 Gerado por `scripts/exportar_trechos.py` a partir das marcas `APS-TRECHO`
 deixadas no código-fonte. Não editar à mão: a próxima execução sobrescreve.
 
-**7 trechos, 231 linhas de código.** O relatório admite cerca de 380 linhas (10 páginas em Arial 12, espaçamento 1,5), então ainda cabem comentários de abertura e as legendas de cada trecho.
+**7 trechos, 230 linhas de código.** O relatório admite cerca de 380 linhas (10 páginas em Arial 12, espaçamento 1,5), então ainda cabem comentários de abertura e as legendas de cada trecho.
 
 | # | Trecho | Onde | Linhas |
 |---|---|---|---|
 | 1 | De onde vem os pontos, e o que acontece quando o Overpass cai | `backend/app/pontos.py` | 27 |
 | 2 | Do CEP ate as coordenadas, da busca mais precisa para a menos precisa | `backend/app/localizacao.py` | 23 |
 | 3 | Consulta externa com cache e tratamento de queda | `backend/app/externo.py` | 21 |
-| 4 | Do dado cru do OpenStreetMap para um ponto de coleta | `backend/app/pontos.py` | 34 |
+| 4 | Do dado cru do OpenStreetMap para um ponto de coleta | `backend/app/pontos.py` | 33 |
 | 5 | Todas as respostas de erro no mesmo formato (RFC 7807) | `backend/app/errors.py` | 34 |
 | 6 | As rotas do web service | `backend/app/main.py` | 44 |
 | 7 | A pagina consumindo o web service | `backend/app/web/app.js` | 48 |
@@ -19,7 +19,7 @@ deixadas no código-fonte. Não editar à mão: a próxima execução sobrescrev
 
 ## 1. De onde vem os pontos, e o que acontece quando o Overpass cai
 
-`backend/app/pontos.py`, linhas 151 a 177
+`backend/app/pontos.py`, linhas 147 a 173
 
 ```python
 def _elementos_do_osm(latitude: float, longitude: float, raio_km: int) -> tuple[list[dict], str]:
@@ -87,7 +87,7 @@ def origem_por_cep(cep: str) -> dict:
 
 ## 3. Consulta externa com cache e tratamento de queda
 
-`backend/app/externo.py`, linhas 41 a 61
+`backend/app/externo.py`, linhas 51 a 71
 
 ```python
 def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
@@ -117,7 +117,7 @@ def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], A
 
 ## 4. Do dado cru do OpenStreetMap para um ponto de coleta
 
-`backend/app/pontos.py`, linhas 45 a 78
+`backend/app/pontos.py`, linhas 45 a 77
 
 ```python
 def ponto_do_elemento(elemento: dict) -> dict | None:
@@ -131,9 +131,8 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
         return None
     if etiquetas.get("access") in ("private", "no") or NOMES_EXCLUIDOS.search(nome):
         return None
-    # A maioria das estacoes de transbordo sem nome e area de aterro, nao ponto de entrega.
-    e_transbordo = etiquetas.get("amenity") == "waste_transfer_station"
-    if e_transbordo and not nome:
+    # Estacao de transbordo costuma ser area de aterro ou de empresa, nao ponto de entrega.
+    if etiquetas.get("amenity") == "waste_transfer_station" and "ecoponto" not in nome.casefold():
         return None
 
     materiais = materiais_das_etiquetas(etiquetas)
@@ -141,7 +140,7 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
     if agrotoxico:
         materiais = ["agrotoxicos"]
 
-    tipo = _tipo(nome, etiquetas, e_transbordo, agrotoxico)
+    tipo = _tipo(nome, etiquetas, agrotoxico)
     return {
         "nome": nome or f"{tipo} (sem nome no mapa)",
         "tipo": tipo,
@@ -292,7 +291,7 @@ async function buscar(evento) {
 
   botao.disabled = true;
   botao.textContent = "Buscando...";
-  mostrarMensagem("Consultando os pontos. Pode levar alguns segundos.");
+  mostrarMensagem("Consultando os pontos. Pode levar até 25 segundos.");
 
   try {
     const parametros = parametrosDaBusca();

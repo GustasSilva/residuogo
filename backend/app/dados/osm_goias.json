@@ -1,0 +1,2217 @@
+{
+"gerado_em": "2026-11-02",
+"elementos": [
+{
+"id": "node/10914145031",
+"lat": -19.5412437,
+"lon": -50.5906511,
+"tags": {
+"addr:city": "Limeira do Oeste",
+"addr:postcode": "38295000",
+"addr:street": "Estr. Mun. Limeira / Colorado / Valdete / BT Paraíso",
+"addr:suburb": "Perimetro Urbano",
+"amenity": "recycling",
+"name": "Ernesto Reciclagem",
+"opening_hours": "Mo-Fr 09:00-17:00",
+"operator": "Ernesto Pereira",
+"phone": "+55 34 99964-4373",
+"recycling:glass_bottles": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1178325294",
+"lat": -19.5227694,
+"lon": -50.6618541,
+"tags": {
+"addr:city": "Limeira do Oeste",
+"addr:postcode": "38295000",
+"amenity": "waste_transfer_station",
+"operator": "Usina Coruripe"
+}
+},
+{
+"id": "way/1508306891",
+"lat": -17.84129,
+"lon": -50.81048,
+"tags": {
+"addr:city": "Rio Verde",
+"amenity": "recycling",
+"name": "ADIRV Rio Verde",
+"opening_hours": "Mo-Fr 08:00-18:00",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1512317025",
+"lat": -17.8128431,
+"lon": -50.6449851,
+"tags": {
+"addr:city": "Santa Helena de Goiás",
+"amenity": "recycling",
+"name": "ADIRV Santa Helena de Goiás",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517122770",
+"lat": -18.2009304,
+"lon": -49.724765,
+"tags": {
+"addr:city": "Bom Jesus de Goiás",
+"amenity": "recycling",
+"name": "ADIAGO - Associação dos Distribuidores de Insumos Agrícolas de Goiás",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517673796",
+"lat": -18.4816053,
+"lon": -50.429108,
+"tags": {
+"addr:city": "Quirinópolis",
+"amenity": "recycling",
+"name": "inpEV Quirinópolis",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517675570",
+"lat": -17.6857085,
+"lon": -49.8174923,
+"tags": {
+"addr:city": "Vicentinópolis",
+"amenity": "recycling",
+"name": "INPEV Vicentinópolis",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13106803397",
+"lat": -16.6730112,
+"lon": -49.4837808,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "container"
+}
+},
+{
+"id": "way/1314011061",
+"lat": -16.5919298,
+"lon": -49.3362125,
+"tags": {
+"amenity": "recycling",
+"name": "SukaTech",
+"recycling:electrical_items": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "way/1395016598",
+"lat": -16.8005667,
+"lon": -49.3689102,
+"tags": {
+"amenity": "waste_transfer_station",
+"name": "Ecoponto Campos Dourados"
+}
+},
+{
+"id": "way/1517117616",
+"lat": -16.4436138,
+"lon": -51.061914,
+"tags": {
+"addr:city": "Iporá",
+"amenity": "recycling",
+"name": "ADIRV Iporá",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517120708",
+"lat": -17.3555217,
+"lon": -50.3790834,
+"tags": {
+"addr:city": "Acreúna",
+"amenity": "recycling",
+"name": "ADIRV Acreúna",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517193308",
+"lat": -16.0322457,
+"lon": -49.840132,
+"tags": {
+"addr:city": "Itaberaí",
+"amenity": "recycling",
+"name": "ARAI - Associação dos Revendedores de Agrotóxicos de Itaberaí",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517651953",
+"lat": -16.8987838,
+"lon": -50.4388827,
+"tags": {
+"addr:city": "Paraúna",
+"amenity": "recycling",
+"name": "ADIRV Paraúna",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517487037",
+"lat": -15.5439943,
+"lon": -47.2841782,
+"tags": {
+"addr:city": "Formosa",
+"amenity": "recycling",
+"name": "ADIF - Associação dos Distribuidores de Insumos Agrícolas de Formosa",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517627447",
+"lat": -17.8747476,
+"lon": -51.658176,
+"tags": {
+"addr:city": "Jataí",
+"amenity": "recycling",
+"name": "Associação Jataiense dos Distribuidores de Defensivos Agrícolas",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/12143260604",
+"lat": -18.9209597,
+"lon": -48.2729497,
+"tags": {
+"amenity": "waste_transfer_station",
+"name": "Aterro do Seu Ed"
+}
+},
+{
+"id": "node/13367931063",
+"lat": -18.9242406,
+"lon": -48.1922868,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Morumbi",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:glass_bottles": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13368210846",
+"lat": -18.9327742,
+"lon": -48.2508852,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Lagoinha",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13371685591",
+"lat": -18.8836761,
+"lon": -48.27409,
+"tags": {
+"addr:city": "Uberlândia",
+"addr:country": "BR",
+"addr:state": "MG",
+"addr:suburb": "Santa Rosa",
+"amenity": "waste_transfer_station",
+"name": "Ecoponto do Bairro Santa Rosa",
+"opening_hours": "Mo-Sa 08:00-18:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"recycling:batteries": "yes",
+"recycling:clothes": "yes",
+"recycling:construction_waste": "yes",
+"recycling:electronics": "yes",
+"recycling:garden_waste": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:tyres": "yes",
+"recycling:waste": "bulk",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13630797580",
+"lat": -18.9758228,
+"lon": -48.382292,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Pequis",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/14140393210",
+"lat": -18.8913872,
+"lon": -48.2911403,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Roosevelt",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/461274044",
+"lat": -18.8665668,
+"lon": -48.2827219,
+"tags": {
+"amenity": "waste_transfer_station",
+"name": "Ecoponto Cruzeiro do Sul"
+}
+},
+{
+"id": "way/1429398695",
+"lat": -18.924452,
+"lon": -48.2065759,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "way/1432159329",
+"lat": -18.8883528,
+"lon": -48.3123831,
+"tags": {
+"amenity": "recycling",
+"name": "CETRIC",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1433177454",
+"lat": -18.8839451,
+"lon": -48.3066974,
+"tags": {
+"amenity": "waste_transfer_station",
+"name": "Resisul Uberlândia - Gerenciamento de Resíduos Industriais",
+"operator": "Resisul"
+}
+},
+{
+"id": "way/1457612537",
+"lat": -18.9287503,
+"lon": -48.2221785,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto 11 - Segismundo Pereira",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:scrap_metal": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612538",
+"lat": -18.9659402,
+"lon": -48.2261001,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto São Jorge",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612539",
+"lat": -18.981408,
+"lon": -48.2793027,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Shopping Park",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612540",
+"lat": -18.9115114,
+"lon": -48.3056392,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Daniel Fonseca",
+"opening_hours": "Mo-Sa 07:00-19:",
+"operator": "Prefeitura Municipal de Uberlândia",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612542",
+"lat": -18.9641693,
+"lon": -48.323599,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Jardim Canaã",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612543",
+"lat": -18.9433354,
+"lon": -48.3195018,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto São Lucas (Jardim das Palmeiras)",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34 3239-2800",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612548",
+"lat": -18.9776946,
+"lon": -48.3541241,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto Monte Hebron",
+"opening_hours": "Mo-Sa 07:00-19:00; Su 07:00-12:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"phone": "+55 34",
+"recycling:clothes": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612549",
+"lat": -18.927319,
+"lon": -48.339235,
+"tags": {
+"access": "customers",
+"amenity": "recycling",
+"name": "Ecoponto Bairro Mansour - Centro de Reciclagem",
+"opening_hours": "Mo-Sa 08:00-18:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"recycling:batteries": "yes",
+"recycling:clothes": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612550",
+"lat": -18.9114516,
+"lon": -48.3366882,
+"tags": {
+"access": "customers",
+"addr:city": "Uberlândia",
+"addr:country": "BR",
+"addr:state": "MG",
+"addr:suburb": "Luizote de Freitas",
+"amenity": "recycling",
+"name": "Ecoponto Luizote de Freitas",
+"opening_hours": "Mo-Sa 08:00-18:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"recycling:batteries": "yes",
+"recycling:clothes": "yes",
+"recycling:construction_waste": "yes",
+"recycling:electronics": "yes",
+"recycling:garden_waste": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:tyres": "yes",
+"recycling:waste": "bulk",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612551",
+"lat": -18.9037932,
+"lon": -48.3411047,
+"tags": {
+"access": "customers",
+"addr:city": "Uberlândia",
+"addr:country": "BR",
+"addr:state": "MG",
+"addr:suburb": "Tocantins",
+"amenity": "recycling",
+"name": "Ecoponto Tocantins",
+"opening_hours": "Mo-Sa 08:00-18:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"recycling:batteries": "yes",
+"recycling:clothes": "yes",
+"recycling:construction_waste": "yes",
+"recycling:electronics": "yes",
+"recycling:garden_waste": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:tyres": "yes",
+"recycling:waste": "bulk",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1457612553",
+"lat": -18.8928192,
+"lon": -48.3269984,
+"tags": {
+"access": "customers",
+"addr:city": "Uberlândia",
+"addr:country": "BR",
+"addr:state": "MG",
+"addr:suburb": "Guarani",
+"amenity": "recycling",
+"name": "Ecoponto Guarani",
+"opening_hours": "Mo-Sa 08:00-18:00",
+"operator": "Prefeitura Municipal de Uberlândia",
+"recycling:batteries": "yes",
+"recycling:clothes": "yes",
+"recycling:construction_waste": "yes",
+"recycling:electronics": "yes",
+"recycling:garden_waste": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:tyres": "yes",
+"recycling:waste": "bulk",
+"recycling:wood": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1488962867",
+"lat": -18.8837922,
+"lon": -48.3114571,
+"tags": {
+"amenity": "recycling",
+"name": "Log Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1488962880",
+"lat": -18.8805107,
+"lon": -48.3085854,
+"tags": {
+"addr:city": "Uberlândia",
+"addr:country": "BR",
+"addr:state": "MG",
+"amenity": "recycling",
+"name": "ABRCS - Associação Brasileira de Reciclagem e Coleta Seletiva",
+"opening_hours": "24/7",
+"operator": "ABRCS",
+"recycling:batteries": "yes",
+"recycling:cardboard": "yes",
+"recycling:clothes": "yes",
+"recycling:electronics": "yes",
+"recycling:glass": "yes",
+"recycling:metal": "yes",
+"recycling:organic": "no",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517195937",
+"lat": -18.1701186,
+"lon": -47.985968,
+"tags": {
+"addr:city": "Catalão",
+"amenity": "recycling",
+"name": "ARRPA - Associação Regional dos Revendedores de Produtos Agrícolas",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517558250",
+"lat": -18.3689114,
+"lon": -49.2719226,
+"tags": {
+"addr:city": "Itumbiara",
+"amenity": "recycling",
+"name": "ADIAGO - Associação dos Distribuidores de Insumos Agrícolas de Goiás",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517651115",
+"lat": -17.7756549,
+"lon": -49.1279306,
+"tags": {
+"addr:city": "Morrinhos",
+"amenity": "recycling",
+"name": "inpEV Morrinhos",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1564878324",
+"lat": -18.9357701,
+"lon": -48.1831138,
+"tags": {
+"amenity": "recycling",
+"name": "Butelão Gestão de Resíduos e Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517649967",
+"lat": -17.4651344,
+"lon": -52.583331,
+"tags": {
+"addr:city": "Mineiros",
+"amenity": "recycling",
+"name": "inpEV Mineiros",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/1201115446",
+"lat": -15.791459,
+"lon": -47.8990381,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/1211310499",
+"lat": -15.8052963,
+"lon": -47.9173675,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/1249288076",
+"lat": -15.8091535,
+"lon": -47.923036,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes",
+"recycling:scrap_metal": "yes"
+}
+},
+{
+"id": "node/1249288326",
+"lat": -15.8058657,
+"lon": -47.9218247,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/1327058515",
+"lat": -15.8069191,
+"lon": -47.914732,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/1327068833",
+"lat": -15.804862,
+"lon": -47.9182378,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/1351408488",
+"lat": -15.7408524,
+"lon": -47.8855996,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/2580044012",
+"lat": -15.845386,
+"lon": -48.1326519,
+"tags": {
+"amenity": "waste_transfer_station",
+"name": "Usina de Tratamento Mecânico Biológico - UTMB P Sul",
+"operator": "SLU-DF"
+}
+},
+{
+"id": "node/3889504844",
+"lat": -15.7395492,
+"lon": -47.9255482,
+"tags": {
+"amenity": "recycling"
+}
+},
+{
+"id": "node/3889504847",
+"lat": -15.7413469,
+"lon": -47.8862263,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/3889504851",
+"lat": -15.7428698,
+"lon": -47.8864897,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/3889504852",
+"lat": -15.743206,
+"lon": -47.8864126,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/3889504853",
+"lat": -15.7439878,
+"lon": -47.8861357,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/3889504854",
+"lat": -15.7444294,
+"lon": -47.8858517,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/3889504855",
+"lat": -15.7462508,
+"lon": -47.8854335,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/3889504856",
+"lat": -15.7463182,
+"lon": -47.8825163,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes"
+}
+},
+{
+"id": "node/3889504859",
+"lat": -15.7466864,
+"lon": -47.883093,
+"tags": {
+"amenity": "recycling",
+"recycling:cans": "yes",
+"recycling:glass": "yes",
+"recycling:paper": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/6573175206",
+"lat": -15.7599699,
+"lon": -47.880844,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/6910474225",
+"lat": -15.7140326,
+"lon": -47.8746657,
+"tags": {
+"amenity": "recycling",
+"name": "Centro de Reciclagem do Varjão - CRV",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/10112243482",
+"lat": -16.669277,
+"lon": -49.1920124,
+"tags": {
+"amenity": "recycling",
+"name": "Núcleo Industrial de Reciclagem da Sociedade Goiana de Cultura - SGC - UCG",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/10309409667",
+"lat": -15.7946299,
+"lon": -48.0400931,
+"tags": {
+"amenity": "recycling",
+"name": "VP Entulho",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/10313491060",
+"lat": -15.6547775,
+"lon": -48.1953323,
+"tags": {
+"amenity": "recycling",
+"name": "RECICLAGEM",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/10767386969",
+"lat": -15.7303797,
+"lon": -47.7787896,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/10767386974",
+"lat": -15.7304805,
+"lon": -47.7790812,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/10791324045",
+"lat": -15.7307536,
+"lon": -47.7792899,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/10813697592",
+"lat": -15.7306546,
+"lon": -47.7793292,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11254346806",
+"lat": -15.7306879,
+"lon": -47.7787852,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11254346809",
+"lat": -15.7307936,
+"lon": -47.7790694,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11255786156",
+"lat": -15.7307478,
+"lon": -47.7794456,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11255786158",
+"lat": -15.7308469,
+"lon": -47.7794066,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204857",
+"lat": -15.7316819,
+"lon": -47.7790821,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204858",
+"lat": -15.7315828,
+"lon": -47.7791211,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204866",
+"lat": -15.7315524,
+"lon": -47.7789835,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204867",
+"lat": -15.7316509,
+"lon": -47.7789429,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204878",
+"lat": -15.7323567,
+"lon": -47.7794934,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204879",
+"lat": -15.732395,
+"lon": -47.779596,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204886",
+"lat": -15.7319996,
+"lon": -47.778511,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11256204887",
+"lat": -15.7320379,
+"lon": -47.7786136,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11258030994",
+"lat": -15.7327383,
+"lon": -47.7847044,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11258030995",
+"lat": -15.7326392,
+"lon": -47.7847434,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11267319902",
+"lat": -15.7325766,
+"lon": -47.7846094,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11267319903",
+"lat": -15.7326754,
+"lon": -47.7845694,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11267358825",
+"lat": -15.7335051,
+"lon": -47.7844067,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11267358826",
+"lat": -15.7336042,
+"lon": -47.7843677,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11267358834",
+"lat": -15.7335632,
+"lon": -47.7842262,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11267358835",
+"lat": -15.7334644,
+"lon": -47.7842659,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11268211908",
+"lat": -15.7311827,
+"lon": -47.7815258,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11268211910",
+"lat": -15.7310837,
+"lon": -47.7815652,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11270202997",
+"lat": -15.7325282,
+"lon": -47.7810116,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11270203000",
+"lat": -15.7326272,
+"lon": -47.7809722,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11270766141",
+"lat": -15.7339484,
+"lon": -47.7804571,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11270766144",
+"lat": -15.7338494,
+"lon": -47.7804965,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11270766150",
+"lat": -15.7353854,
+"lon": -47.7798993,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11270766153",
+"lat": -15.7352864,
+"lon": -47.7799387,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11285131294",
+"lat": -15.7339663,
+"lon": -47.7783816,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11285131296",
+"lat": -15.7340034,
+"lon": -47.7784847,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11285148355",
+"lat": -15.7336482,
+"lon": -47.7774984,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11285148356",
+"lat": -15.7336111,
+"lon": -47.7773953,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11294625955",
+"lat": -15.7344524,
+"lon": -47.7780113,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11294625956",
+"lat": -15.7343543,
+"lon": -47.778053,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11294629451",
+"lat": -15.7343158,
+"lon": -47.7779236,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11294629452",
+"lat": -15.7344146,
+"lon": -47.7778839,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11301353590",
+"lat": -15.7352544,
+"lon": -47.7777058,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11301353593",
+"lat": -15.7353537,
+"lon": -47.7776674,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11301353716",
+"lat": -15.7351615,
+"lon": -47.7775965,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11301353717",
+"lat": -15.7352601,
+"lon": -47.7775562,
+"tags": {
+"amenity": "recycling",
+"recycling:cardboard": "yes",
+"recycling:green_waste": "yes",
+"recycling:metal": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/11310312816",
+"lat": -15.7804903,
+"lon": -47.7834682,
+"tags": {
+"amenity": "recycling",
+"recycling:glass_bottles": "yes",
+"recycling:green_waste": "yes",
+"recycling:paper": "yes",
+"recycling:plastic": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/12496966682",
+"lat": -15.7367329,
+"lon": -47.8864954,
+"tags": {
+"amenity": "recycling",
+"recycling:green_waste": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/12496966816",
+"lat": -15.7390752,
+"lon": -47.8853866,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/12752988262",
+"lat": -15.6719193,
+"lon": -47.8423544,
+"tags": {
+"amenity": "recycling",
+"opening_hours": "24/7",
+"recycling:cans": "yes",
+"recycling:cardboard": "yes",
+"recycling:paper": "yes",
+"recycling:paper_packaging": "yes",
+"recycling:plastic": "yes",
+"recycling:plastic_bottles": "yes",
+"recycling:plastic_packaging": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/13107125777",
+"lat": -16.7928402,
+"lon": -49.2963654,
+"tags": {
+"amenity": "recycling",
+"name": "Reciclagem ITAPONTAL",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13107125787",
+"lat": -16.7916421,
+"lon": -49.2946646,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13231477119",
+"lat": -15.8087252,
+"lon": -48.0294642,
+"tags": {
+"addr:housenumber": "Lote 1 loja 2",
+"addr:postcode": "72006450",
+"addr:street": "SHVP - Rua 6 - Chácara 242",
+"addr:suburb": "Vicente Pires",
+"amenity": "recycling",
+"name": "RECITRÔN - Reciclagem de Lixo Eletrônico",
+"operator": "Recitron - Logistica reversa",
+"recycling:aluminium": "yes",
+"recycling:batteries": "yes",
+"recycling:bicycles": "yes",
+"recycling:car_parts": "yes",
+"recycling:electrical_appliances": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/13305139139",
+"lat": -15.8101019,
+"lon": -47.8461726,
+"tags": {
+"amenity": "recycling",
+"recycling:batteries": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/13522849357",
+"lat": -16.7891786,
+"lon": -49.1999805,
+"tags": {
+"amenity": "waste_transfer_station",
+"name": "ATERRO SANITÁRIO"
+}
+},
+{
+"id": "node/13522849387",
+"lat": -16.7589514,
+"lon": -49.1665764,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "node/13522849388",
+"lat": -16.7773375,
+"lon": -49.1872153,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "node/13522849389",
+"lat": -16.7901066,
+"lon": -49.192925,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "node/13522849395",
+"lat": -16.7697253,
+"lon": -49.1944435,
+"tags": {
+"addr:place": "Aparecida de Goiânia",
+"amenity": "waste_transfer_station",
+"name": "ATERRO",
+"opening_hours": "08:00-23:30"
+}
+},
+{
+"id": "way/736668192",
+"lat": -15.7789562,
+"lon": -47.9842872,
+"tags": {
+"addr:city": "SCIA",
+"addr:postcode": "71300-000",
+"addr:suburb": "Santa luzia-Estrutural",
+"amenity": "recycling",
+"name": "Cooperativa Sonho de Liberdade - fernando",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/812868532",
+"lat": -16.7389797,
+"lon": -49.161096,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1040911352",
+"lat": -15.8351225,
+"lon": -48.0483943,
+"tags": {
+"amenity": "recycling",
+"recycling:batteries": "yes",
+"recycling:glass": "yes",
+"recycling:glass_bottles": "yes",
+"recycling:scrap_metal": "yes",
+"recycling_type": "container"
+}
+},
+{
+"id": "way/1043535819",
+"lat": -15.8344575,
+"lon": -48.0427071,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "way/1315409352",
+"lat": -15.7792,
+"lon": -47.983291,
+"tags": {
+"amenity": "recycling",
+"name": "reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315409354",
+"lat": -15.7795611,
+"lon": -47.9820677,
+"tags": {
+"amenity": "recycling",
+"name": "Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315724550",
+"lat": -15.779384,
+"lon": -47.9876995,
+"tags": {
+"amenity": "recycling",
+"name": "Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315728304",
+"lat": -15.7738595,
+"lon": -47.9875625,
+"tags": {
+"amenity": "recycling",
+"name": "Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315728308",
+"lat": -15.773187,
+"lon": -47.98902,
+"tags": {
+"amenity": "recycling",
+"name": "Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315943677",
+"lat": -15.7818233,
+"lon": -47.9838031,
+"tags": {
+"amenity": "recycling",
+"name": "Cooperfé",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315943678",
+"lat": -15.7815083,
+"lon": -47.9834668,
+"tags": {
+"amenity": "recycling",
+"name": "Cooperativa Coortrap",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315943679",
+"lat": -15.780478,
+"lon": -47.9846735,
+"tags": {
+"amenity": "recycling",
+"name": "Capital Reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315990239",
+"lat": -15.7736127,
+"lon": -47.9871813,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315990240",
+"lat": -15.7733847,
+"lon": -47.9872641,
+"tags": {
+"amenity": "recycling",
+"name": "guarda  material de reciclagem",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315993694",
+"lat": -15.7796975,
+"lon": -47.9874612,
+"tags": {
+"amenity": "recycling",
+"name": "reciclagem /compra",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315993695",
+"lat": -15.7799911,
+"lon": -47.9868704,
+"tags": {
+"amenity": "recycling",
+"name": "compra de material",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315993696",
+"lat": -15.7806561,
+"lon": -47.9827309,
+"tags": {
+"amenity": "recycling",
+"name": "deposito de material",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315993697",
+"lat": -15.781727,
+"lon": -47.980892,
+"tags": {
+"amenity": "recycling",
+"name": "deposito de material",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1315993698",
+"lat": -15.7820659,
+"lon": -47.9806045,
+"tags": {
+"amenity": "recycling",
+"name": "deposito de material",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1316000909",
+"lat": -15.7799577,
+"lon": -47.982013,
+"tags": {
+"amenity": "recycling",
+"name": "deposito de material",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1458567808",
+"lat": -15.814485,
+"lon": -48.0167019,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "way/1473998816",
+"lat": -16.7772882,
+"lon": -49.1871255,
+"tags": {
+"addr:street": "Avenida Bela Vista",
+"amenity": "waste_transfer_station",
+"name": "aterro sanitário"
+}
+},
+{
+"id": "way/1473998818",
+"lat": -16.7893008,
+"lon": -49.1990703,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "way/1473998821",
+"lat": -16.7587236,
+"lon": -49.1665924,
+"tags": {
+"amenity": "waste_transfer_station"
+}
+},
+{
+"id": "way/1473998824",
+"lat": -16.7695931,
+"lon": -49.1942181,
+"tags": {
+"addr:place": "Aparecida de Goiânia",
+"amenity": "waste_transfer_station",
+"name": "ATERRO",
+"opening_hours": "08:00-23:30"
+}
+},
+{
+"id": "way/1517089504",
+"lat": -16.7600647,
+"lon": -48.4961913,
+"tags": {
+"addr:city": "Vianópolis",
+"amenity": "recycling",
+"name": "Associação dos Revendedores de Defensivos Agrícolas de Vianópolis",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517143349",
+"lat": -16.2915042,
+"lon": -48.88049,
+"tags": {
+"addr:city": "Anápolis",
+"amenity": "recycling",
+"name": "ARIARA - Associação dos Revendedores de Insumos Agrícolas da Região de Anápolis",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517468859",
+"lat": -16.816336,
+"lon": -47.6689039,
+"tags": {
+"addr:city": "Cristalina",
+"amenity": "recycling",
+"name": "Associação dos Revendedores de Insumos de Cristalina",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517503397",
+"lat": -16.7278198,
+"lon": -49.1639188,
+"tags": {
+"addr:city": "Goiânia",
+"amenity": "recycling",
+"name": "AGERPA - Associação Goiana dos Empresários Revendedores de Produtos Agropecuários",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517648472",
+"lat": -16.3094431,
+"lon": -47.6868358,
+"tags": {
+"addr:city": "Luziânia",
+"amenity": "recycling",
+"name": "inpEV Luziânia",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517670509",
+"lat": -17.3394536,
+"lon": -49.061516,
+"tags": {
+"addr:city": "Piracanjuba",
+"amenity": "recycling",
+"name": "ADIAGO - Piracanjuba",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/7177920554",
+"lat": -15.3087376,
+"lon": -49.6176031,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "container"
+}
+},
+{
+"id": "way/1517106832",
+"lat": -15.0825922,
+"lon": -50.623753,
+"tags": {
+"addr:city": "Araguapaz",
+"amenity": "recycling",
+"name": "Associação dos Revendedores Agropecuários do Centro Norte Goiano e Região",
+"recycling:pesticide_containers": "yes",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1518438758",
+"lat": -15.3119822,
+"lon": -49.6249708,
+"tags": {
+"addr:city": "Ceres",
+"amenity": "recycling",
+"name": "ARIARCER - Associação dos Revendedores de Insumos Agrícolas da Região de Ceres",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/12539163545",
+"lat": -19.2172401,
+"lon": -46.2234528,
+"tags": {
+"amenity": "recycling",
+"name": "Ecoponto",
+"recycling_type": "container"
+}
+},
+{
+"id": "way/1365385026",
+"lat": -19.5537381,
+"lon": -46.8807408,
+"tags": {
+"amenity": "recycling",
+"operator": "Triunfo | CONCEBRA",
+"recycling_type": "container"
+}
+},
+{
+"id": "way/546888415",
+"lat": -13.5506127,
+"lon": -52.2676869,
+"tags": {
+"amenity": "recycling",
+"recycling_type": "container"
+}
+},
+{
+"id": "node/4610770393",
+"lat": -14.3119438,
+"lon": -49.1488097,
+"tags": {
+"amenity": "recycling",
+"name": "Reciplam"
+}
+},
+{
+"id": "way/1517487024",
+"lat": -15.5367054,
+"lon": -47.3899065,
+"tags": {
+"addr:city": "Formosa",
+"amenity": "recycling",
+"name": "Central de Recebimento inpEV Formosa",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517501742",
+"lat": -15.4014484,
+"lon": -49.1355869,
+"tags": {
+"addr:city": "Goianésia",
+"amenity": "recycling",
+"name": "Associação dos Revendedores Agropecuários do Centro Norte Goiano e Região",
+"recycling_type": "centre"
+}
+},
+{
+"id": "node/9032837723",
+"lat": -16.3165245,
+"lon": -46.945805,
+"tags": {
+"amenity": "recycling",
+"name": "Central Unaí de Recebimento de Embalagens Vazias de Agrotóxico - INPEV",
+"recycling_type": "centre"
+}
+},
+{
+"id": "way/1517670567",
+"lat": -13.4038286,
+"lon": -49.1337101,
+"tags": {
+"addr:city": "Porangatu",
+"amenity": "recycling",
+"name": "Associação dos Revendedores Agropecuários do Centro Norte Goiano e Região",
+"recycling_type": "centre"
+}
+}
+]
+}

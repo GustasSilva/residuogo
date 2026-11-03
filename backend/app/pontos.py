@@ -22,7 +22,7 @@ from app.materiais import materiais_das_etiquetas, para_saida
 # Entidades que recebem embalagens de agrotoxicos: o OpenStreetMap nao informa o
 # material, mas sem isso alguem procurando onde levar papel seria mandado para la.
 NOMES_DE_AGROTOXICOS = re.compile(
-    r"inpev|insumos agr|defensivos|produtos agr|agropecu|adiago|adirv|arrpa|agerpa|ariara",
+    r"inpev|insumos agr|agrot[oó]xic|defensivos|produtos agr|agropecu|adiago|adirv|arrpa|agerpa|ariara",
     re.IGNORECASE,
 )
 # Aterros e lixoes aparecem no mapa, mas nao recebem entrega de quem procura um ponto.
@@ -53,9 +53,8 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
         return None
     if etiquetas.get("access") in ("private", "no") or NOMES_EXCLUIDOS.search(nome):
         return None
-    # A maioria das estacoes de transbordo sem nome e area de aterro, nao ponto de entrega.
-    e_transbordo = etiquetas.get("amenity") == "waste_transfer_station"
-    if e_transbordo and not nome:
+    # Estacao de transbordo costuma ser area de aterro ou de empresa, nao ponto de entrega.
+    if etiquetas.get("amenity") == "waste_transfer_station" and "ecoponto" not in nome.casefold():
         return None
 
     materiais = materiais_das_etiquetas(etiquetas)
@@ -63,7 +62,7 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
     if agrotoxico:
         materiais = ["agrotoxicos"]
 
-    tipo = _tipo(nome, etiquetas, e_transbordo, agrotoxico)
+    tipo = _tipo(nome, etiquetas, agrotoxico)
     return {
         "nome": nome or f"{tipo} (sem nome no mapa)",
         "tipo": tipo,
@@ -79,13 +78,11 @@ def ponto_do_elemento(elemento: dict) -> dict | None:
 # APS-FIM
 
 
-def _tipo(nome: str, etiquetas: dict, e_transbordo: bool, agrotoxico: bool) -> str:
+def _tipo(nome: str, etiquetas: dict, agrotoxico: bool) -> str:
     if agrotoxico:
         return "Central de embalagens de agrotóxicos"
     if "ecoponto" in nome.casefold():
         return "Ecoponto"
-    if e_transbordo:
-        return "Estação de transbordo"
     if etiquetas.get("recycling_type") == "container":
         return "Contêiner de coleta"
     return "Centro de reciclagem"
