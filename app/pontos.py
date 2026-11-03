@@ -9,6 +9,7 @@ from app.localizacao import dentro_de_goias, sem_acentos
 from app.materiais import para_saida
 
 DISTANCIA_DE_DUPLICATA_KM = 0.15
+QUANTOS_MAIS_PROXIMOS = 3
 
 
 def distancia_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -41,28 +42,40 @@ def _remover_duplicatas(pontos: list[dict]) -> list[dict]:
     return unicos
 
 
-# APS-TRECHO 2: A busca dos pontos de coleta
-def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> tuple[list[dict], list[str]]:
-    """Pontos de Goias dentro do raio, do mais perto para o mais longe, e os avisos da consulta.
+def _pontos_ordenados(latitude: float, longitude: float, elementos: list[dict], material: str | None) -> list[dict]:
+    """Pontos de Goias que servem para o material, do mais perto para o mais longe.
 
     Com um material escolhido, tambem entram os pontos que nao informam o que
     aceitam: a tela avisa a pessoa para confirmar antes de ir.
     """
-    elementos, aviso = overpass.elementos_perto(latitude, longitude, raio_km)
     do_mapa = [ponto for ponto in map(overpass.ponto_do_elemento, elementos) if ponto]
 
     # Os ecopontos vem primeiro para terem preferencia sobre o mesmo lugar no mapa.
-    perto = []
-    for ponto in [*_ecopontos(), *do_mapa]:
-        distancia = distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"])
-        if distancia <= raio_km and dentro_de_goias(ponto["latitude"], ponto["longitude"]):
-            perto.append({**ponto, "distancia_km": round(distancia, 1)})
-
+    em_goias = [
+        {**ponto, "distancia_km": round(distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"]), 1)}
+        for ponto in [*_ecopontos(), *do_mapa]
+        if dentro_de_goias(ponto["latitude"], ponto["longitude"])
+    ]
     resultado = [
         {**ponto, "materiais": para_saida(ponto["materiais"])}
-        for ponto in _remover_duplicatas(perto)
+        for ponto in _remover_duplicatas(em_goias)
         if not material or not ponto["materiais"] or material in ponto["materiais"]
     ]
-    resultado.sort(key=lambda ponto: ponto["distancia_km"])
-    return resultado, [aviso] if aviso else []
+    return sorted(resultado, key=lambda ponto: ponto["distancia_km"])
+
+
+# APS-TRECHO 2: A busca dos pontos de coleta
+def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> dict:
+    """Pontos dentro do raio. Sem nenhum, os mais proximos de todo o estado."""
+    elementos, aviso = overpass.elementos_perto(latitude, longitude, raio_km)
+    avisos = [aviso] if aviso else []
+
+    ordenados = _pontos_ordenados(latitude, longitude, elementos, material)
+    no_raio = [ponto for ponto in ordenados if ponto["distancia_km"] <= raio_km]
+    if no_raio:
+        return {"pontos": no_raio, "avisos": avisos, "fora_do_raio": False}
+
+    # Goias tem poucos pontos mapeados, entao um raio vazio e comum.
+    todos = _pontos_ordenados(latitude, longitude, overpass.elementos_de_goias(), material)
+    return {"pontos": todos[:QUANTOS_MAIS_PROXIMOS], "avisos": avisos, "fora_do_raio": True}
 # APS-FIM

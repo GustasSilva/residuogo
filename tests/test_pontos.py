@@ -7,6 +7,10 @@ from app.pontos import _remover_duplicatas, buscar, distancia_km
 from tests.conftest import elemento, responder_overpass
 
 
+def nomes(resultado):
+    return [ponto["nome"] for ponto in resultado["pontos"]]
+
+
 def test_distancia_entre_goiania_e_anapolis():
     assert distancia_km(-16.6869, -49.2648, -16.3281, -48.9534) == pytest.approx(52, abs=2)
 
@@ -31,8 +35,7 @@ def test_ponto_fora_de_goias_nao_aparece(apis):
         elemento(-16.07, -47.98, 1, name="Em Valparaíso"),
         elemento(-15.79, -47.88, 2, name="Em Brasília"),
     ])
-    encontrados, _ = buscar(-16.07, -47.98, 50, None)
-    assert [ponto["nome"] for ponto in encontrados] == ["Em Valparaíso"]
+    assert nomes(buscar(-16.07, -47.98, 50, None)) == ["Em Valparaíso"]
 
 
 def test_mesmo_lugar_repetido_aparece_uma_vez():
@@ -50,9 +53,10 @@ def test_resultado_vem_do_mais_perto_para_o_mais_longe(apis):
         elemento(-17.791, -50.92, 2, name="Mais perto"),
         elemento(-18.50, -50.92, 3, name="Fora do raio"),
     ])
-    encontrados, avisos = buscar(-17.79, -50.92, 10, None)
-    assert [ponto["nome"] for ponto in encontrados] == ["Mais perto", "Mais longe"]
-    assert avisos == []
+    resultado = buscar(-17.79, -50.92, 10, None)
+    assert nomes(resultado) == ["Mais perto", "Mais longe"]
+    assert resultado["avisos"] == []
+    assert resultado["fora_do_raio"] is False
 
 
 def test_filtro_mantem_quem_aceita_e_quem_nao_informa(apis):
@@ -62,18 +66,38 @@ def test_filtro_mantem_quem_aceita_e_quem_nao_informa(apis):
         elemento(-17.79, -50.94, 3, name="Não informa"),
         elemento(-17.79, -50.95, 4, name="inpEV Rio Verde"),
     ])
-    encontrados, _ = buscar(-17.79, -50.92, 10, "papel")
-    assert [ponto["nome"] for ponto in encontrados] == ["Aceita papel", "Não informa"]
+    assert nomes(buscar(-17.79, -50.92, 10, "papel")) == ["Aceita papel", "Não informa"]
 
 
 def test_ecopontos_da_lista_aparecem_com_os_materiais(apis):
     responder_overpass(apis, [])
-    encontrados, _ = buscar(-16.80, -49.37, 5, "pneus")
-    assert encontrados[0]["nome"] == "Ecoponto Campos Dourados"
-    assert {"chave": "pneus", "rotulo": "Pneus"} in encontrados[0]["materiais"]
+    primeiro = buscar(-16.80, -49.37, 5, "pneus")["pontos"][0]
+    assert primeiro["nome"] == "Ecoponto Campos Dourados"
+    assert {"chave": "pneus", "rotulo": "Pneus"} in primeiro["materiais"]
 
 
 def test_ecoponto_da_lista_tem_preferencia_sobre_o_do_mapa(apis):
     responder_overpass(apis, [elemento(-16.80056, -49.36891, 1, name="Ecoponto Campos Dourados", amenity="waste_transfer_station")])
-    encontrados, _ = buscar(-16.80, -49.37, 2, None)
-    assert [ponto["fonte"] for ponto in encontrados] == ["Prefeitura de Goiânia e imprensa"]
+    pontos = buscar(-16.80, -49.37, 2, None)["pontos"]
+    assert [ponto["fonte"] for ponto in pontos] == ["Prefeitura de Goiânia e imprensa"]
+
+
+def test_sem_ponto_no_raio_mostra_os_mais_proximos_do_estado(apis, monkeypatch):
+    responder_overpass(apis, [])
+    copia = {"gerado_em": "2026-11-02", "elementos": [elemento(-16.00, -50.00, 1, name="Na cópia")]}
+    monkeypatch.setattr("app.overpass._copia_de_reserva", lambda: copia)
+
+    resultado = buscar(-13.50, -47.00, 10, None)
+    distancias = [ponto["distancia_km"] for ponto in resultado["pontos"]]
+    assert resultado["fora_do_raio"] is True
+    assert len(distancias) == 3
+    assert distancias == sorted(distancias)
+    assert distancias[0] > 10
+
+
+def test_os_mais_proximos_respeitam_o_material(apis, monkeypatch):
+    responder_overpass(apis, [])
+    copia = {"gerado_em": "2026-11-02", "elementos": [elemento(-13.60, -47.10, 1, name="inpEV Perto")]}
+    monkeypatch.setattr("app.overpass._copia_de_reserva", lambda: copia)
+    assert "inpEV Perto" not in nomes(buscar(-13.50, -47.00, 5, "pneus"))
+    assert nomes(buscar(-13.50, -47.00, 5, "agrotoxicos"))[0] == "inpEV Perto"

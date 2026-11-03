@@ -52,7 +52,7 @@ sequenceDiagram
     participant N as Nominatim
     participant O as Overpass
 
-    Pessoa->>P: informa CEP, material e distância
+    Pessoa->>P: digita o CEP, escolhe material e distância
     P->>S: GET /api/pontos?cep=...&raio_km=...&material=...
     S->>V: endereço do CEP
     V-->>S: rua, bairro, cidade e código IBGE
@@ -72,7 +72,7 @@ flowchart TD
     inicio["Busca em uma coordenada"] --> cache{"Tem consulta<br/>de menos de 1 dia?"}
     cache -- sim --> usar["Usa a consulta guardada"]
     cache -- não --> falhou{"Overpass falhou<br/>nos últimos 2 minutos?"}
-    falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 25 s"]
+    falhou -- não --> perguntar["Pergunta a 3 servidores<br/>e espera até 8 s"]
     perguntar --> respondeu{"Algum respondeu?"}
     respondeu -- sim --> guardar["Guarda no cache e usa"]
     respondeu -- não --> copia["Usa a cópia de Goiás<br/>e avisa a data"]
@@ -80,6 +80,9 @@ flowchart TD
     usar --> final["Junta com os ecopontos de Goiânia<br/>e mantém só o que está em Goiás"]
     guardar --> final
     copia --> final
+    final --> raio{"Tem ponto na<br/>distância escolhida?"}
+    raio -- sim --> lista["Mostra os pontos do raio"]
+    raio -- não --> proximos["Mostra os 3 mais próximos do estado"]
 ```
 
 ## Do CEP até as coordenadas

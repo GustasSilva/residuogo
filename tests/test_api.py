@@ -23,7 +23,7 @@ def test_documentacao_da_api_existe(cliente):
     documentacao = cliente.get("/openapi.json").json()["paths"]
     assert {"/api/pontos", "/api/pontos.csv", "/api/municipios", "/api/materiais"} <= set(documentacao)
     parametros = {item["name"] for item in documentacao["/api/pontos.csv"]["get"]["parameters"]}
-    assert parametros == {"cep", "municipio", "raio_km", "material"}
+    assert parametros == {"cep", "municipio", "lat", "lon", "raio_km", "material"}
 
 
 def test_busca_por_cep(cliente, apis_ok):
@@ -38,6 +38,7 @@ def test_busca_por_cep(cliente, apis_ok):
     }
     assert corpo["raio_km"] == 10
     assert corpo["total"] == len(corpo["pontos"])
+    assert corpo["fora_do_raio"] is False
 
 
 def test_busca_por_municipio(cliente, apis_ok):
@@ -48,6 +49,32 @@ def test_busca_por_municipio(cliente, apis_ok):
     assert corpo["origem"]["precisao"] == "município"
     # Os cinco ecopontos de Goiania ficam dentro de 25 km do centro.
     assert sum(ponto["tipo"] == "Ecoponto" for ponto in corpo["pontos"]) == 5
+
+
+def test_busca_por_ponto_no_mapa(cliente, apis_ok):
+    resposta = cliente.get("/api/pontos", params={"lat": -16.80, "lon": -49.37, "raio_km": 5})
+    assert resposta.status_code == 200
+    corpo = resposta.json()
+    assert corpo["origem"] == {
+        "descricao": "Ponto escolhido no mapa",
+        "latitude": -16.80,
+        "longitude": -49.37,
+        "precisao": "mapa",
+    }
+    assert corpo["pontos"][0]["nome"] == "Ecoponto Campos Dourados"
+
+
+def test_csv_da_busca_por_ponto_no_mapa(cliente, apis_ok):
+    resposta = cliente.get("/api/pontos.csv", params={"lat": -16.80, "lon": -49.37, "raio_km": 5})
+    assert resposta.status_code == 200
+    assert "Ecoponto Campos Dourados" in resposta.content.decode("utf-8")
+
+
+def test_contorno_de_goias(cliente):
+    resposta = cliente.get("/api/goias")
+    assert resposta.status_code == 200
+    assert resposta.headers["content-type"].startswith("application/geo+json")
+    assert resposta.json()["features"][0]["geometry"]["type"] == "Polygon"
 
 
 def test_nominatim_nao_recebe_q_junto_com_state(cliente, apis):
@@ -105,8 +132,12 @@ def test_coordenada_fora_de_goias_e_ignorada(cliente, apis):
 @pytest.mark.parametrize(
     ("parametros", "trecho"),
     [
-        ({}, "um dos dois"),
-        ({"cep": "74230010", "municipio": "5208707"}, "um dos dois"),
+        ({}, "um dos três"),
+        ({"cep": "74230010", "municipio": "5208707"}, "um dos três"),
+        ({"cep": "74230010", "lat": -16.7, "lon": -49.27}, "um dos três"),
+        ({"lat": -16.7}, "latitude e a longitude"),
+        ({"lat": -15.79, "lon": -47.88}, "fora de Goiás"),
+        ({"lat": "muito", "lon": -47.88}, "lat"),
         ({"cep": "123"}, "8 dígitos"),
         ({"cep": "74230010", "raio_km": 0}, "entre 1 e 50"),
         ({"cep": "74230010", "raio_km": 51}, "entre 1 e 50"),

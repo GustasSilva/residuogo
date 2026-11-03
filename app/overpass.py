@@ -27,6 +27,10 @@ NOMES_DE_AGROTOXICOS = re.compile(
 # Aterros e lixoes aparecem no mapa, mas nao recebem entrega de quem procura um ponto.
 NOMES_EXCLUIDOS = re.compile(r"aterro|lix[aã]o", re.IGNORECASE)
 
+# Consultas em celulas de 0,1 grau (cerca de 11 km), com folga no raio. Assim buscas e
+# cliques proximos aproveitam o mesmo resultado, e pontos.py calcula a distancia exata.
+FOLGA_DA_CELULA_KM = 8
+
 _ultima_falha = -math.inf
 
 
@@ -37,7 +41,8 @@ _ultima_falha = -math.inf
 def elementos_perto(latitude: float, longitude: float, raio_km: int) -> tuple[list[dict], str]:
     """Devolve os elementos do mapa e um aviso, quando eles vierem da copia."""
     global _ultima_falha
-    chave = f"overpass:{latitude:.3f},{longitude:.3f},{raio_km}"
+    celula = round(latitude, 1), round(longitude, 1)
+    chave = f"overpass:{celula[0]},{celula[1]},{raio_km}"
     guardado = ler_do_cache(chave)
     if guardado and time.time() - guardado[1] < config.VALIDADE_PONTOS:
         return guardado[0], ""
@@ -45,12 +50,9 @@ def elementos_perto(latitude: float, longitude: float, raio_km: int) -> tuple[li
     # Logo depois de uma falha nao adianta esperar o tempo limite de novo.
     if time.monotonic() - _ultima_falha >= config.ESPERA_APOS_FALHA_OVERPASS:
         try:
-            elementos = _perguntar_aos_servidores(latitude, longitude, raio_km)
+            return _perguntar_aos_servidores(chave, *celula, raio_km + FOLGA_DA_CELULA_KM), ""
         except FalhaExterna:
             _ultima_falha = time.monotonic()
-        else:
-            guardar_no_cache(chave, elementos)
-            return elementos, ""
 
     copia = _copia_de_reserva()
     data = date.fromisoformat(copia["gerado_em"]).strftime("%d/%m/%Y")
@@ -58,36 +60,37 @@ def elementos_perto(latitude: float, longitude: float, raio_km: int) -> tuple[li
 # APS-FIM
 
 
-def _perguntar_aos_servidores(latitude: float, longitude: float, raio_km: int) -> list[dict]:
-    """Pergunta a todos ao mesmo tempo e fica com o primeiro que responder.
-
-    Perguntar a um de cada vez deixaria a pessoa esperando pela soma dos tempos limite.
-    """
-    limite = config.TEMPO_LIMITE_OVERPASS
-    alvo = f"around:{raio_km * 1000},{latitude:.5f},{longitude:.5f}"
+def _perguntar_aos_servidores(chave: str, latitude: float, longitude: float, raio_km: int) -> list[dict]:
+    """Pergunta a todos ao mesmo tempo e fica com o primeiro que responder."""
+    alvo = f"around:{raio_km * 1000},{latitude},{longitude}"
     consulta = (
-        f"[out:json][timeout:{limite}];("
+        f"[out:json][timeout:{config.TEMPO_LIMITE_OVERPASS}];("
         f'nwr["amenity"="recycling"]({alvo});'
         f'nwr["amenity"="waste_transfer_station"]({alvo});'
         ");out tags center;"
     )
 
-    executor = ThreadPoolExecutor(max_workers=len(config.SERVIDORES_OVERPASS))
-    futuros = [
-        executor.submit(enviar_consulta, servidor, "Overpass", {"data": consulta}, limite)
-        for servidor in config.SERVIDORES_OVERPASS
-    ]
+    executor = ThreadPoolExecutor(max_workers=len(config.SERVIDORES_OVERPASS), thread_name_prefix="overpass")
+    futuros = [executor.submit(_perguntar, servidor, consulta, chave) for servidor in config.SERVIDORES_OVERPASS]
     try:
-        for futuro in as_completed(futuros, timeout=limite):
+        for futuro in as_completed(futuros, timeout=config.ESPERA_OVERPASS):
             try:
-                return elementos_da_resposta(futuro.result())
+                return futuro.result()
             except FalhaExterna:
                 continue
     except TempoEsgotado:
         pass
     finally:
-        executor.shutdown(wait=False, cancel_futures=True)
+        executor.shutdown(wait=False)
     raise FalhaExterna("Overpass: nenhum servidor respondeu")
+
+
+def _perguntar(servidor: str, consulta: str, chave: str) -> list[dict]:
+    """Guarda a resposta aqui: mesmo que a busca ja tenha desistido, a proxima aproveita."""
+    resposta = enviar_consulta(servidor, "Overpass", {"data": consulta}, config.TEMPO_LIMITE_OVERPASS)
+    elementos = elementos_da_resposta(resposta)
+    guardar_no_cache(chave, elementos)
+    return elementos
 
 
 def elementos_da_resposta(resposta: Any) -> list[dict]:
@@ -103,6 +106,10 @@ def elementos_da_resposta(resposta: Any) -> list[dict]:
 @lru_cache(maxsize=1)
 def _copia_de_reserva() -> dict:
     return json.loads(config.ARQUIVO_COPIA_OSM.read_text("utf-8"))
+
+
+def elementos_de_goias() -> list[dict]:
+    return _copia_de_reserva()["elementos"]
 
 
 # --- Conversao ---

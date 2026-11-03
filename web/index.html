@@ -46,19 +46,25 @@
         </select>
       </div>
       <button type="submit" id="buscar">Buscar pontos</button>
+      <button type="button" id="limpar" class="secundario">Limpar busca</button>
     </form>
 
+    <div id="carregando"></div>
     <p id="mensagem" role="status"></p>
 
-    <section id="resultado" hidden>
-      <div class="titulo-resultado">
-        <h2 id="resumo"></h2>
-        <a id="csv" download>Baixar lista em CSV</a>
-      </div>
-      <div id="avisos"></div>
-      <div class="colunas">
+    <div class="colunas">
+      <div class="coluna-mapa">
         <div id="mapa"></div>
-        <table id="tabela">
+        <p class="legenda">Clique no mapa para procurar a partir de qualquer lugar de Goiás.</p>
+      </div>
+      <div id="lista">
+        <div id="cabecalho" class="titulo-resultado" hidden>
+          <h2 id="resumo"></h2>
+          <a id="csv" download>Baixar lista em CSV</a>
+        </div>
+        <div id="avisos"></div>
+        <p id="instrucao">Informe um CEP, escolha um município ou clique no mapa para ver os pontos de coleta mais próximos.</p>
+        <table id="tabela" hidden>
           <thead>
             <tr>
               <th scope="col">Nº</th>
@@ -69,7 +75,7 @@
           <tbody id="linhas"></tbody>
         </table>
       </div>
-    </section>
+    </div>
   </main>
 
   <footer>

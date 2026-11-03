@@ -13,6 +13,7 @@ import io
 import logging
 
 from fastapi import Depends, FastAPI, Query, Response
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, localizacao, pontos
@@ -37,12 +38,15 @@ registrar_handlers(app)
 def _consultar(
     cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
     municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
+    lat: float | None = Query(None, description="Latitude de um ponto em Goiás, junto com lon."),
+    lon: float | None = Query(None, description="Longitude de um ponto em Goiás, junto com lat."),
     raio_km: int = Query(10, description="Distância máxima, em km."),
     material: str | None = Query(None, description="Chave de um item de /api/materiais."),
 ) -> dict:
     """Valida os parametros e faz a busca. Serve as rotas em JSON e em CSV."""
-    if bool(cep) == bool(municipio):
-        raise DadosInvalidos("Informe o CEP ou o município, um dos dois.")
+    ponto_no_mapa = lat is not None or lon is not None
+    if sum([bool(cep), bool(municipio), ponto_no_mapa]) != 1:
+        raise DadosInvalidos("Informe o CEP, o município ou um ponto no mapa, um dos três.")
     if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
         raise DadosInvalidos(
             f"A distância precisa ficar entre {config.RAIO_MINIMO_KM} e {config.RAIO_MAXIMO_KM} km."
@@ -52,21 +56,22 @@ def _consultar(
 
     if cep:
         origem = localizacao.origem_por_cep(localizacao.limpar_cep(cep))
-    else:
+    elif municipio:
         origem = localizacao.origem_por_municipio(municipio)
+    else:
+        origem = localizacao.origem_por_coordenadas(lat, lon)
 
-    encontrados, avisos = pontos.buscar(origem["latitude"], origem["longitude"], raio_km, material)
+    busca = pontos.buscar(origem["latitude"], origem["longitude"], raio_km, material)
     return {
         "origem": origem,
         "raio_km": raio_km,
         "material": material or None,
-        "total": len(encontrados),
-        "pontos": encontrados,
-        "avisos": avisos,
+        "total": len(busca["pontos"]),
+        **busca,
     }
 
 
-@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP ou município")
+@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP, município ou ponto no mapa")
 def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 
@@ -88,6 +93,11 @@ def listar_municipios() -> list[dict]:
 @app.get("/api/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
 def listar_materiais() -> list[dict]:
     return para_saida(list(MATERIAIS))
+
+
+@app.get("/api/goias", summary="Contorno oficial de Goiás, em GeoJSON")
+def contorno_de_goias() -> FileResponse:
+    return FileResponse(config.ARQUIVO_LIMITE_GOIAS, media_type="application/geo+json")
 # APS-FIM
 
 

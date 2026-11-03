@@ -1,10 +1,13 @@
 """Conversao dos dados do OpenStreetMap e o que acontece quando o Overpass cai."""
 
+import threading
+
+import httpx
 import pytest
 
 from app import config, externo, overpass
 from app.overpass import elementos_perto, ponto_do_elemento
-from tests.conftest import derrubar_overpass, elemento, responder_overpass
+from tests.conftest import derrubar_overpass, elemento, esperar_consultas_ao_overpass, responder_overpass
 
 COPIA = {"gerado_em": "2026-11-02", "elementos": [elemento(-17.79, -50.92, 1, name="Da cópia")]}
 
@@ -70,6 +73,20 @@ def test_consulta_repetida_nao_chama_o_overpass_de_novo(apis):
     assert apis.calls.call_count == chamadas
 
 
+def test_buscas_proximas_aproveitam_a_mesma_consulta(apis):
+    responder_overpass(apis, [])
+    elementos_perto(-17.79, -50.92, 10)
+    chamadas = apis.calls.call_count
+    elementos_perto(-17.81, -50.88, 10)
+    assert apis.calls.call_count == chamadas
+
+
+def test_consulta_tem_folga_para_cobrir_a_celula_inteira(apis):
+    responder_overpass(apis, [])
+    elementos_perto(-17.79, -50.92, 10)
+    assert "around%3A18000%2C-17.8%2C-50.9" in apis.calls[0].request.content.decode()
+
+
 def test_consulta_vencida_pergunta_de_novo(apis, monkeypatch):
     responder_overpass(apis, [])
     elementos_perto(-17.79, -50.92, 10)
@@ -105,7 +122,30 @@ def test_resposta_pela_metade_nao_vai_para_o_cache(apis, monkeypatch):
     elementos, aviso = elementos_perto(-17.79, -50.92, 10)
     assert elementos == COPIA["elementos"]
     assert "não respondeu" in aviso
-    assert externo.ler_do_cache("overpass:-17.790,-50.920,10") is None
+    assert externo.ler_do_cache("overpass:-17.8,-50.9,10") is None
+
+
+def test_resposta_atrasada_ainda_vai_para_o_cache(apis, monkeypatch):
+    liberar = threading.Event()
+
+    def demorar(request):
+        liberar.wait(5)
+        return httpx.Response(200, json={"elements": [elemento(name="Atrasado")]})
+
+    for servidor in config.SERVIDORES_OVERPASS:
+        apis.post(servidor).mock(side_effect=demorar)
+    monkeypatch.setattr(overpass, "_copia_de_reserva", lambda: COPIA)
+    monkeypatch.setattr(config, "ESPERA_OVERPASS", 0.05)
+
+    # A busca nao espera: responde com a copia na hora.
+    elementos, aviso = elementos_perto(-17.79, -50.92, 10)
+    assert elementos == COPIA["elementos"]
+    assert "não respondeu" in aviso
+
+    # Quando o servidor responde, o dado fica para a proxima busca.
+    liberar.set()
+    esperar_consultas_ao_overpass()
+    assert elementos_perto(-17.79, -50.92, 10)[0][0]["tags"]["name"] == "Atrasado"
 
 
 def test_um_servidor_fora_do_ar_nao_derruba_a_busca(apis):

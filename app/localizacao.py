@@ -147,6 +147,14 @@ def origem_por_cep(cep: str) -> dict:
     return _origem(descricao, tentativas, endereco["ibge"])
 
 
+def origem_por_coordenadas(latitude: float | None, longitude: float | None) -> dict:
+    if latitude is None or longitude is None:
+        raise DadosInvalidos("Informe a latitude e a longitude do ponto.")
+    if not dentro_de_goias(latitude, longitude):
+        raise DadosInvalidos("Esse local fica fora de Goiás. Escolha um ponto dentro do estado.")
+    return {"descricao": "Ponto escolhido no mapa", "latitude": latitude, "longitude": longitude, "precisao": "mapa"}
+
+
 def origem_por_municipio(codigo: str) -> dict:
     if not re.fullmatch(r"52\d{5}", codigo):
         raise DadosInvalidos("O código do município precisa ser um código IBGE de Goiás, com 7 dígitos.")

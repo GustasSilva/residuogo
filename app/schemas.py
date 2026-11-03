@@ -42,3 +42,4 @@ class RespostaPontos(BaseModel):
     total: int
     pontos: list[Ponto]
     avisos: list[str]
+    fora_do_raio: bool  # nada no raio: a lista traz os mais proximos do estado

@@ -15,6 +15,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 body {
   margin: 0 auto;
   max-width: 1200px;
@@ -81,10 +83,54 @@ button {
 button:hover { background: #084a85; }
 button:disabled { background: var(--cinza); cursor: wait; }
 
+/* Mesma largura em "Buscar pontos" e "Buscando...", para o formulario nao pular. */
+#buscar { min-width: 140px; }
+
+.secundario {
+  border: 1px solid var(--apagado);
+  background: #fff;
+  color: var(--texto);
+  font-weight: normal;
+}
+
+.secundario:hover { background: var(--fundo-claro); }
+
 :focus-visible { outline: 3px solid var(--amarelo); outline-offset: 1px; }
 
-#mensagem { min-height: 24px; margin: 8px 0; }
+/* Barra de carregamento: ocupa o espaco sempre, para a tela nao pular. */
+#carregando {
+  height: 4px;
+  overflow: hidden;
+  visibility: hidden;
+  background: var(--fundo-claro);
+}
+
+.buscando #carregando { visibility: visible; }
+
+#carregando::after {
+  content: "";
+  display: block;
+  width: 30%;
+  height: 100%;
+  background: var(--azul);
+  animation: vai-e-vem 1s ease-in-out infinite alternate;
+}
+
+@keyframes vai-e-vem {
+  from { margin-left: 0; }
+  to { margin-left: 70%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #carregando::after { width: 100%; animation: none; }
+}
+
+#mensagem { min-height: 24px; margin: 6px 0 8px; }
 #mensagem.erro { color: #a81f1b; font-weight: bold; }
+
+.buscando #lista { opacity: 0.45; }
+
+#instrucao { margin: 0; font-size: 18px; }
 
 .titulo-resultado {
   display: flex;
@@ -106,12 +152,15 @@ h2 { margin: 0; font-size: 20px; }
 
 .colunas { display: grid; grid-template-columns: 5fr 7fr; gap: 20px; align-items: start; }
 
-#mapa {
-  position: sticky;
-  top: 12px;
-  height: 560px;
-  border: 1px solid var(--linha);
-}
+.coluna-mapa { position: sticky; top: 12px; }
+
+#mapa { height: 540px; border: 1px solid var(--linha); }
+
+/* O cursor mostra que o mapa aceita clique; os pontos continuam com a mao. */
+#mapa.leaflet-grab { cursor: crosshair; }
+#mapa.leaflet-dragging { cursor: grabbing; }
+
+.legenda { margin: 4px 0 0; color: var(--apagado); font-size: 14px; }
 
 table { width: 100%; border-collapse: collapse; }
 
@@ -128,7 +177,7 @@ td {
   vertical-align: top;
 }
 
-tr.selecionada td { background: var(--fundo-claro); }
+tbody tr:hover td, tr.selecionada td { background: var(--fundo-claro); }
 
 .numero { font-weight: bold; }
 .distancia { white-space: nowrap; }
@@ -201,7 +250,8 @@ footer p { margin: 0 0 4px; }
 
 @media (max-width: 860px) {
   .colunas { grid-template-columns: 1fr; }
-  #mapa { position: static; height: 320px; }
+  .coluna-mapa { position: static; }
+  #mapa { height: 320px; }
 }
 
 @media (max-width: 560px) {

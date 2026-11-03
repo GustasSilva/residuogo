@@ -25,7 +25,8 @@ SERVIDORES_OVERPASS = [
 ]
 
 TEMPO_LIMITE_HTTP = 6  # segundos, para IBGE, ViaCEP e Nominatim
-TEMPO_LIMITE_OVERPASS = 25  # segundos que a busca espera pelo Overpass
+ESPERA_OVERPASS = 8  # segundos que a busca espera antes de usar a copia
+TEMPO_LIMITE_OVERPASS = 25  # segundos que uma resposta atrasada ainda pode chegar
 ESPERA_APOS_FALHA_OVERPASS = 120  # segundos sem tentar de novo depois de uma falha
 
 DIA = 24 * 60 * 60

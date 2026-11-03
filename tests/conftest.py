@@ -1,6 +1,7 @@
 """Os testes nao chamam a internet: o respx simula cada API externa."""
 
 import math
+import threading
 
 import pytest
 import respx
@@ -26,6 +27,12 @@ MUNICIPIOS = [
 ]
 
 
+def esperar_consultas_ao_overpass():
+    for thread in threading.enumerate():
+        if thread.name.startswith("overpass"):
+            thread.join()
+
+
 def elemento(lat=-16.70, lon=-49.27, identificador=1, **etiquetas):
     etiquetas.setdefault("amenity", "recycling")
     return {"type": "node", "id": identificador, "lat": lat, "lon": lon, "tags": etiquetas}
@@ -35,9 +42,12 @@ def elemento(lat=-16.70, lon=-49.27, identificador=1, **etiquetas):
 def ambiente_limpo(tmp_path, monkeypatch):
     """Cada teste comeca com o cache vazio e sem lembrar de falhas do Overpass."""
     monkeypatch.setattr(config, "ARQUIVO_CACHE", tmp_path / "cache.db")
-    monkeypatch.setattr(config, "TEMPO_LIMITE_OVERPASS", 1)
+    monkeypatch.setattr(config, "ESPERA_OVERPASS", 1)
     monkeypatch.setattr(overpass, "_ultima_falha", -math.inf)
     monkeypatch.setattr("app.localizacao.time.sleep", lambda _: None)
+    yield
+    # Sem isso, uma resposta atrasada gravaria no cache de verdade depois do teste.
+    esperar_consultas_ao_overpass()
 
 
 @pytest.fixture

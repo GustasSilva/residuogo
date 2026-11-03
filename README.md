@@ -1,8 +1,10 @@
 # ResíduoGO
 
-Consulta de pontos de coleta de resíduos no estado de Goiás. A pessoa informa um CEP ou um município, escolhe o material que vai descartar e vê os pontos mais próximos em uma lista e em um mapa.
+Consulta de pontos de coleta de resíduos no estado de Goiás. A pessoa informa um CEP, escolhe um município ou clica no mapa, e vê os pontos mais próximos em uma lista e no mapa.
 
 Trabalho de APS do curso de Ciência da Computação da UNIP. O enunciado pede web services ligados à gestão ambiental, dentro de Goiás, e uma aplicação que os consuma.
+
+![Tela do ResíduoGO](docs/imagens/02-resultado.jpg)
 
 ## Como funciona
 
@@ -30,16 +32,25 @@ uvicorn app.main:app --reload
 - Página: http://127.0.0.1:8000
 - Documentação da API: http://127.0.0.1:8000/docs
 
+## Na página
+
+- O CEP busca sozinho quando fica completo, e o município, ao ser escolhido.
+- Clicar no mapa procura a partir daquele lugar, desde que seja dentro de Goiás.
+- Mudar o material ou a distância refaz a busca atual.
+- Passar o mouse em um ponto da lista destaca o ponto no mapa, e clicar em um marcador destaca o ponto na lista.
+- "Limpar busca" volta a página ao início.
+
 ## API
 
 | Rota | O que faz |
 |---|---|
-| `GET /api/pontos` | pontos perto de um CEP ou município |
+| `GET /api/pontos` | pontos perto de um CEP, município ou ponto no mapa |
 | `GET /api/pontos.csv` | a mesma busca, em planilha |
 | `GET /api/municipios` | municípios de Goiás, com a região |
 | `GET /api/materiais` | materiais aceitos no filtro |
+| `GET /api/goias` | contorno oficial de Goiás, em GeoJSON |
 
-Parâmetros de `/api/pontos`: `cep` ou `municipio` (código IBGE), `raio_km` (de 1 a 50, padrão 10) e `material`.
+Parâmetros de `/api/pontos`: `cep`, `municipio` (código IBGE) ou `lat` e `lon`, mais `raio_km` (de 1 a 50, padrão 10) e `material`.
 
 ```
 GET /api/pontos?cep=74230-010&raio_km=10&material=pneus
@@ -64,15 +75,18 @@ GET /api/pontos?cep=74230-010&raio_km=10&material=pneus
       "materiais": [{ "chave": "pneus", "rotulo": "Pneus" }]
     }
   ],
-  "avisos": []
+  "avisos": [],
+  "fora_do_raio": false
 }
 ```
+
+Se não houver nenhum ponto no raio, a resposta traz os 3 mais próximos do estado, com `fora_do_raio` igual a `true`.
 
 Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 
 | Situação | Resposta |
 |---|---|
-| CEP, distância ou material inválido, CEP de outro estado | 422 |
+| CEP, distância ou material inválido, CEP ou ponto fora de Goiás | 422 |
 | CEP ou município que não existe | 404 |
 | IBGE ou ViaCEP fora do ar, sem cache | 503 |
 
@@ -80,10 +94,10 @@ Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 
 Os servidores públicos do Overpass ficam sobrecarregados com frequência, então a busca foi feita para continuar sem eles:
 
-1. As respostas externas ficam guardadas em um cache em arquivo (`cache.db`).
-2. A busca pergunta aos três servidores do Overpass ao mesmo tempo, espera até 25 segundos e usa a primeira resposta.
-3. Se nenhum responder, usa a cópia dos dados de Goiás que fica no projeto e avisa na tela.
-4. Depois de uma falha, passa 2 minutos sem tentar o Overpass, para ninguém esperar os 25 segundos de novo.
+1. As respostas externas ficam guardadas em um cache em arquivo (`cache.db`). Buscas próximas aproveitam a mesma consulta.
+2. A busca pergunta aos três servidores do Overpass ao mesmo tempo e espera até 8 segundos.
+3. Se nenhum responder a tempo, usa a cópia dos dados de Goiás que fica no projeto e avisa na tela. Uma resposta atrasada ainda entra no cache, para a próxima busca.
+4. Depois de uma falha, passa 2 minutos sem tentar o Overpass.
 5. Sem o Nominatim, as distâncias contam a partir do centro do município, informado pelo IBGE.
 
 Para atualizar a cópia, que fica em `dados/osm_goias.json`:
