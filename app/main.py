@@ -36,17 +36,16 @@ registrar_handlers(app)
 
 # APS-TRECHO 1: As rotas do web service
 def _consultar(
-    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
-    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
+    local: str | None = Query(None, description="CEP, município, bairro ou endereço em Goiás.", examples=["74230-010"]),
     lat: float | None = Query(None, description="Latitude de um ponto em Goiás, junto com lon."),
     lon: float | None = Query(None, description="Longitude de um ponto em Goiás, junto com lat."),
     raio_km: int = Query(10, description="Distância máxima, em km."),
     material: str | None = Query(None, description="Chave de um item de /api/materiais."),
 ) -> dict:
     """Valida os parametros e faz a busca. Serve as rotas em JSON e em CSV."""
-    ponto_no_mapa = lat is not None or lon is not None
-    if sum([bool(cep), bool(municipio), ponto_no_mapa]) != 1:
-        raise DadosInvalidos("Informe o CEP, o município ou um ponto no mapa, um dos três.")
+    tem_local = bool(local and local.strip())
+    if tem_local == (lat is not None or lon is not None):
+        raise DadosInvalidos("Informe um local ou um ponto no mapa, um dos dois.")
     if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
         raise DadosInvalidos(
             f"A distância precisa ficar entre {config.RAIO_MINIMO_KM} e {config.RAIO_MAXIMO_KM} km."
@@ -54,10 +53,8 @@ def _consultar(
     if material and material not in MATERIAIS:
         raise DadosInvalidos(f"O material {material} não existe. Veja a lista em /api/materiais.")
 
-    if cep:
-        origem = localizacao.origem_por_cep(localizacao.limpar_cep(cep))
-    elif municipio:
-        origem = localizacao.origem_por_municipio(municipio)
+    if tem_local:
+        origem = localizacao.origem_por_texto(local)
     else:
         origem = localizacao.origem_por_coordenadas(lat, lon)
 
@@ -71,7 +68,7 @@ def _consultar(
     }
 
 
-@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP, município ou ponto no mapa")
+@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um local ou ponto no mapa")
 def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 

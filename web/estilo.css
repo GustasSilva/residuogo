@@ -52,6 +52,7 @@ form {
 }
 
 .campo { display: flex; flex-direction: column; }
+.campo-local { flex: 2 1 320px; }
 .campo-largo { flex: 1 1 220px; }
 
 label { margin-bottom: 3px; font-weight: bold; font-size: 14px; }
@@ -65,10 +66,6 @@ input, select {
   background: #fff;
   color: inherit;
 }
-
-#cep { width: 125px; }
-
-.ou { padding-bottom: 8px; color: var(--apagado); }
 
 button {
   padding: 0 18px;
@@ -256,8 +253,6 @@ footer p { margin: 0 0 4px; }
 
 @media (max-width: 560px) {
   .campo, button { flex: 1 1 100%; }
-  #cep { width: 100%; }
-  .ou { padding: 0; }
 
   thead { position: absolute; left: -9999px; }
   table, tbody, tr, td { display: block; }

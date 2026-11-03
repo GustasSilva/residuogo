@@ -17,6 +17,9 @@ URL_METADADOS_MUNICIPIO = "https://servicodados.ibge.gov.br/api/v3/malhas/munici
 URL_VIACEP = "https://viacep.com.br/ws/{cep}/json/"
 URL_NOMINATIM = "https://nominatim.openstreetmap.org/search"
 
+# Retangulo em volta de Goias, para o Nominatim procurar so nessa area.
+CAIXA_DE_GOIAS = "-53.25,-12.4,-45.9,-19.5"
+
 # Instancias publicas da mesma API. Todas ficam sobrecarregadas com frequencia.
 SERVIDORES_OVERPASS = [
     "https://overpass-api.de/api/interpreter",

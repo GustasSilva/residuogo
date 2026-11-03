@@ -18,7 +18,9 @@ BUENO = {
     "uf": "GO",
     "ibge": "5208707",
 }
-COORDENADAS_BUENO = [{"lat": "-16.70", "lon": "-49.27"}]
+COORDENADAS_BUENO = [
+    {"lat": "-16.70", "lon": "-49.27", "display_name": "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil"}
+]
 
 MUNICIPIOS = [
     {"id": 5208707, "nome": "Goiânia", "regiao-imediata": {"regiao-intermediaria": {"nome": "Goiânia"}}},

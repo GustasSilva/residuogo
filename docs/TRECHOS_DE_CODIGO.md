@@ -2,7 +2,7 @@
 
 Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
-8 trechos, 284 linhas. O limite é de cerca de 380 linhas.
+8 trechos, 282 linhas. O limite é de cerca de 380 linhas.
 
 ## 1. As rotas do web service
 
@@ -10,17 +10,16 @@ Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
 ```python
 def _consultar(
-    cep: str | None = Query(None, description="CEP de Goiás, com ou sem traço.", examples=["74230-010"]),
-    municipio: str | None = Query(None, description="Código IBGE do município.", examples=["5208707"]),
+    local: str | None = Query(None, description="CEP, município, bairro ou endereço em Goiás.", examples=["74230-010"]),
     lat: float | None = Query(None, description="Latitude de um ponto em Goiás, junto com lon."),
     lon: float | None = Query(None, description="Longitude de um ponto em Goiás, junto com lat."),
     raio_km: int = Query(10, description="Distância máxima, em km."),
     material: str | None = Query(None, description="Chave de um item de /api/materiais."),
 ) -> dict:
     """Valida os parametros e faz a busca. Serve as rotas em JSON e em CSV."""
-    ponto_no_mapa = lat is not None or lon is not None
-    if sum([bool(cep), bool(municipio), ponto_no_mapa]) != 1:
-        raise DadosInvalidos("Informe o CEP, o município ou um ponto no mapa, um dos três.")
+    tem_local = bool(local and local.strip())
+    if tem_local == (lat is not None or lon is not None):
+        raise DadosInvalidos("Informe um local ou um ponto no mapa, um dos dois.")
     if not config.RAIO_MINIMO_KM <= raio_km <= config.RAIO_MAXIMO_KM:
         raise DadosInvalidos(
             f"A distância precisa ficar entre {config.RAIO_MINIMO_KM} e {config.RAIO_MAXIMO_KM} km."
@@ -28,10 +27,8 @@ def _consultar(
     if material and material not in MATERIAIS:
         raise DadosInvalidos(f"O material {material} não existe. Veja a lista em /api/materiais.")
 
-    if cep:
-        origem = localizacao.origem_por_cep(localizacao.limpar_cep(cep))
-    elif municipio:
-        origem = localizacao.origem_por_municipio(municipio)
+    if tem_local:
+        origem = localizacao.origem_por_texto(local)
     else:
         origem = localizacao.origem_por_coordenadas(lat, lon)
 
@@ -45,7 +42,7 @@ def _consultar(
     }
 
 
-@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um CEP, município ou ponto no mapa")
+@app.get("/api/pontos", response_model=RespostaPontos, summary="Pontos de coleta perto de um local ou ponto no mapa")
 def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 
@@ -94,12 +91,27 @@ def buscar(latitude: float, longitude: float, raio_km: int, material: str | None
     return {"pontos": todos[:QUANTOS_MAIS_PROXIMOS], "avisos": avisos, "fora_do_raio": True}
 ```
 
-## 3. Do CEP ate as coordenadas, da busca mais precisa para a menos precisa
+## 3. Do texto digitado ate as coordenadas
 
 `app/localizacao.py`
 
 ```python
-def origem_por_cep(cep: str) -> dict:
+def origem_por_texto(texto: str) -> dict:
+    """Entende o que a pessoa digitou: CEP, municipio ou outro lugar (bairro, endereco...)."""
+    texto = texto.strip()
+    if re.fullmatch(r"[\d\s.-]+", texto):
+        return _origem_por_cep(_limpar_cep(texto))
+
+    municipio = _municipio_pelo_nome(texto)
+    if municipio:
+        cidade = municipio["nome"]
+        return _origem(f"{cidade} - GO", [("município", {"city": cidade})], municipio["codigo"])
+
+    return _origem_por_lugar(texto)
+
+
+def _origem_por_cep(cep: str) -> dict:
+    """Tenta a rua, depois o bairro, depois a cidade."""
     endereco = _endereco_do_cep(cep)
     cidade = endereco["localidade"]
     rua = endereco.get("logradouro", "")
@@ -116,19 +128,13 @@ def origem_por_cep(cep: str) -> dict:
     return _origem(descricao, tentativas, endereco["ibge"])
 
 
-def origem_por_coordenadas(latitude: float | None, longitude: float | None) -> dict:
-    if latitude is None or longitude is None:
-        raise DadosInvalidos("Informe a latitude e a longitude do ponto.")
-    if not dentro_de_goias(latitude, longitude):
-        raise DadosInvalidos("Esse local fica fora de Goiás. Escolha um ponto dentro do estado.")
-    return {"descricao": "Ponto escolhido no mapa", "latitude": latitude, "longitude": longitude, "precisao": "mapa"}
-
-
-def origem_por_municipio(codigo: str) -> dict:
-    if not re.fullmatch(r"52\d{5}", codigo):
-        raise DadosInvalidos("O código do município precisa ser um código IBGE de Goiás, com 7 dígitos.")
-    cidade = _nome_do_municipio(codigo)
-    return _origem(f"{cidade} - GO", [("município", {"city": cidade})], codigo)
+def _origem_por_lugar(texto: str) -> dict:
+    for latitude, longitude, nome in _lugares_nominatim(texto):
+        if dentro_de_goias(latitude, longitude):
+            # O nome vem como "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil".
+            descricao = nome.split(", Goiás, Região")[0] + " - GO"
+            return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": "lugar"}
+    raise NaoEncontrado(f'Não encontramos "{texto}" em Goiás. Tente incluir a cidade, como "Setor Bueno, Goiânia".')
 
 
 def _origem(descricao: str, tentativas: list[tuple[str, dict]], codigo_ibge: str) -> dict:
@@ -298,27 +304,21 @@ async function chamarApi(caminho, opcoes) {
   return corpo;
 }
 
-function parametrosDaBusca(ponto) {
-  const parametros = new URLSearchParams({ raio_km: campoRaio.value });
-  if (ponto) {
-    parametros.set("lat", ponto.lat);
-    parametros.set("lon", ponto.lon);
-  } else if (campoCep.value) {
-    parametros.set("cep", campoCep.value);
-  } else if (campoMunicipio.value) {
-    parametros.set("municipio", campoMunicipio.value);
-  }
+function parametrosDaBusca(origem) {
+  const parametros = new URLSearchParams({ raio_km: campoRaio.value, ...origem });
   if (campoMaterial.value) parametros.set("material", campoMaterial.value);
   return parametros;
 }
 
-async function buscar(ponto = pontoNoMapa) {
+async function buscar(origem) {
   // Uma busca nova cancela a anterior, para a resposta antiga nao sobrescrever a nova.
   buscaEmAndamento?.abort();
   const busca = new AbortController();
   buscaEmAndamento = busca;
+  const origemAnterior = origemAtual;
+  origemAtual = origem;
 
-  const parametros = parametrosDaBusca(ponto);
+  const parametros = parametrosDaBusca(origem);
   indicarBusca(true);
   mostrarMensagem("Procurando pontos...");
   const demora = setTimeout(() => {
@@ -328,15 +328,13 @@ async function buscar(ponto = pontoNoMapa) {
   try {
     const dados = await chamarApi(`/api/pontos?${parametros}`, { signal: busca.signal });
     if (busca.signal.aborted) return;
-    pontoNoMapa = ponto;
-    if (ponto) {
-      campoCep.value = "";
-      campoMunicipio.value = "";
-    }
+    if (origem.lat) campoLocal.value = "";
     mostrarMensagem("");
     mostrarResultado(dados, parametros);
   } catch (erro) {
-    if (erro.name !== "AbortError") mostrarMensagem(erro.message, true);
+    if (erro.name === "AbortError") return;
+    origemAtual = origemAnterior;
+    mostrarMensagem(erro.message, true);
   } finally {
     clearTimeout(demora);
     if (buscaEmAndamento === busca) indicarBusca(false);

@@ -63,17 +63,19 @@ def _consultar_municipios() -> list[dict[str, str]]:
     return sorted(lista, key=lambda municipio: sem_acentos(municipio["nome"]))
 
 
-def _nome_do_municipio(codigo: str) -> str:
-    for municipio in municipios():
-        if municipio["codigo"] == codigo:
-            return municipio["nome"]
-    raise NaoEncontrado(f"O município {codigo} não existe em Goiás.")
+def _municipio_pelo_nome(nome: str) -> dict | None:
+    try:
+        lista = municipios()
+    except ServicoIndisponivel:
+        return None  # sem o IBGE, o Nominatim ainda acha a cidade como um lugar qualquer
+    procurado = sem_acentos(nome)
+    return next((municipio for municipio in lista if sem_acentos(municipio["nome"]) == procurado), None)
 
 
 # --- CEP ---
 
 
-def limpar_cep(cep: str) -> str:
+def _limpar_cep(cep: str) -> str:
     digitos = re.sub(r"\D", "", cep)
     if len(digitos) != 8:
         raise DadosInvalidos("O CEP precisa ter 8 dígitos.")
@@ -114,6 +116,25 @@ def _coordenadas_nominatim(**busca: str) -> list[float] | None:
     return coordenadas if coordenadas and dentro_de_goias(*coordenadas) else None
 
 
+def _lugares_nominatim(texto: str) -> list[list]:
+    """Lugares encontrados para um texto livre, como [latitude, longitude, nome]."""
+
+    def consultar() -> list[list]:
+        time.sleep(1)  # o Nominatim pede no maximo uma chamada por segundo
+        params = {
+            "q": texto,
+            "viewbox": config.CAIXA_DE_GOIAS,
+            "bounded": 1,
+            "format": "jsonv2",
+            "limit": 5,
+            "countrycodes": "br",
+        }
+        resultado = obter_json(config.URL_NOMINATIM, "Nominatim", params)
+        return [[float(lugar["lat"]), float(lugar["lon"]), lugar["display_name"]] for lugar in resultado]
+
+    return com_cache(f"lugar:{sem_acentos(texto)}", config.VALIDADE_ENDERECOS, "Nominatim", consultar)
+
+
 def _centro_do_municipio(codigo: str) -> list[float]:
     def consultar() -> list[float]:
         bruto = obter_json(config.URL_METADADOS_MUNICIPIO.format(codigo=codigo), "IBGE")
@@ -129,8 +150,23 @@ def _centro_do_municipio(codigo: str) -> list[float]:
 # --- Ponto de partida da busca ---
 
 
-# APS-TRECHO 3: Do CEP ate as coordenadas, da busca mais precisa para a menos precisa
-def origem_por_cep(cep: str) -> dict:
+# APS-TRECHO 3: Do texto digitado ate as coordenadas
+def origem_por_texto(texto: str) -> dict:
+    """Entende o que a pessoa digitou: CEP, municipio ou outro lugar (bairro, endereco...)."""
+    texto = texto.strip()
+    if re.fullmatch(r"[\d\s.-]+", texto):
+        return _origem_por_cep(_limpar_cep(texto))
+
+    municipio = _municipio_pelo_nome(texto)
+    if municipio:
+        cidade = municipio["nome"]
+        return _origem(f"{cidade} - GO", [("município", {"city": cidade})], municipio["codigo"])
+
+    return _origem_por_lugar(texto)
+
+
+def _origem_por_cep(cep: str) -> dict:
+    """Tenta a rua, depois o bairro, depois a cidade."""
     endereco = _endereco_do_cep(cep)
     cidade = endereco["localidade"]
     rua = endereco.get("logradouro", "")
@@ -147,19 +183,13 @@ def origem_por_cep(cep: str) -> dict:
     return _origem(descricao, tentativas, endereco["ibge"])
 
 
-def origem_por_coordenadas(latitude: float | None, longitude: float | None) -> dict:
-    if latitude is None or longitude is None:
-        raise DadosInvalidos("Informe a latitude e a longitude do ponto.")
-    if not dentro_de_goias(latitude, longitude):
-        raise DadosInvalidos("Esse local fica fora de Goiás. Escolha um ponto dentro do estado.")
-    return {"descricao": "Ponto escolhido no mapa", "latitude": latitude, "longitude": longitude, "precisao": "mapa"}
-
-
-def origem_por_municipio(codigo: str) -> dict:
-    if not re.fullmatch(r"52\d{5}", codigo):
-        raise DadosInvalidos("O código do município precisa ser um código IBGE de Goiás, com 7 dígitos.")
-    cidade = _nome_do_municipio(codigo)
-    return _origem(f"{cidade} - GO", [("município", {"city": cidade})], codigo)
+def _origem_por_lugar(texto: str) -> dict:
+    for latitude, longitude, nome in _lugares_nominatim(texto):
+        if dentro_de_goias(latitude, longitude):
+            # O nome vem como "Setor Bueno, Goiânia, Goiás, Região Centro-Oeste, 74215-315, Brasil".
+            descricao = nome.split(", Goiás, Região")[0] + " - GO"
+            return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": "lugar"}
+    raise NaoEncontrado(f'Não encontramos "{texto}" em Goiás. Tente incluir a cidade, como "Setor Bueno, Goiânia".')
 
 
 def _origem(descricao: str, tentativas: list[tuple[str, dict]], codigo_ibge: str) -> dict:
@@ -177,3 +207,11 @@ def _origem(descricao: str, tentativas: list[tuple[str, dict]], codigo_ibge: str
     latitude, longitude = coordenadas or _centro_do_municipio(codigo_ibge)
     return {"descricao": descricao, "latitude": latitude, "longitude": longitude, "precisao": precisao}
 # APS-FIM
+
+
+def origem_por_coordenadas(latitude: float | None, longitude: float | None) -> dict:
+    if latitude is None or longitude is None:
+        raise DadosInvalidos("Informe a latitude e a longitude do ponto.")
+    if not dentro_de_goias(latitude, longitude):
+        raise DadosInvalidos("Esse local fica fora de Goiás. Escolha um ponto dentro do estado.")
+    return {"descricao": "Ponto escolhido no mapa", "latitude": latitude, "longitude": longitude, "precisao": "mapa"}

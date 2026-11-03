@@ -1,6 +1,6 @@
 # ResíduoGO
 
-Consulta de pontos de coleta de resíduos no estado de Goiás. A pessoa informa um CEP, escolhe um município ou clica no mapa, e vê os pontos mais próximos em uma lista e no mapa.
+Consulta de pontos de coleta de resíduos no estado de Goiás. A pessoa digita um CEP, município, bairro ou endereço, ou clica no mapa, e vê os pontos mais próximos em uma lista e no mapa.
 
 Trabalho de APS do curso de Ciência da Computação da UNIP. O enunciado pede web services ligados à gestão ambiental, dentro de Goiás, e uma aplicação que os consuma.
 
@@ -12,10 +12,10 @@ O projeto tem um web service REST próprio, que reúne dados de APIs externas, e
 
 | API externa | Para que é usada |
 |---|---|
-| IBGE Localidades | lista dos 246 municípios de Goiás e suas regiões |
+| IBGE Localidades | municípios de Goiás, usados nas sugestões do campo de busca |
 | IBGE Malhas | centro do município, quando o Nominatim não responde |
 | ViaCEP | endereço a partir do CEP |
-| Nominatim (OpenStreetMap) | coordenadas do endereço |
+| Nominatim (OpenStreetMap) | coordenadas de um endereço, bairro ou lugar |
 | Overpass (OpenStreetMap) | pontos de coleta perto das coordenadas |
 
 ## Como rodar
@@ -34,7 +34,8 @@ uvicorn app.main:app --reload
 
 ## Na página
 
-- O CEP busca sozinho quando fica completo, e o município, ao ser escolhido.
+- O campo de busca aceita CEP, município, bairro ou endereço. O CEP busca sozinho quando fica completo, e o município, ao ser escolhido nas sugestões. O resto busca com Enter ou com o botão.
+- O título do resultado mostra o lugar que foi entendido, para conferir.
 - Clicar no mapa procura a partir daquele lugar, desde que seja dentro de Goiás.
 - Mudar o material ou a distância refaz a busca atual.
 - Passar o mouse em um ponto da lista destaca o ponto no mapa, e clicar em um marcador destaca o ponto na lista.
@@ -44,16 +45,16 @@ uvicorn app.main:app --reload
 
 | Rota | O que faz |
 |---|---|
-| `GET /api/pontos` | pontos perto de um CEP, município ou ponto no mapa |
+| `GET /api/pontos` | pontos perto de um local ou ponto no mapa |
 | `GET /api/pontos.csv` | a mesma busca, em planilha |
 | `GET /api/municipios` | municípios de Goiás, com a região |
 | `GET /api/materiais` | materiais aceitos no filtro |
 | `GET /api/goias` | contorno oficial de Goiás, em GeoJSON |
 
-Parâmetros de `/api/pontos`: `cep`, `municipio` (código IBGE) ou `lat` e `lon`, mais `raio_km` (de 1 a 50, padrão 10) e `material`.
+Parâmetros de `/api/pontos`: `local` (CEP, município, bairro ou endereço) ou `lat` e `lon`, mais `raio_km` (de 1 a 50, padrão 10) e `material`.
 
 ```
-GET /api/pontos?cep=74230-010&raio_km=10&material=pneus
+GET /api/pontos?local=74230-010&raio_km=10&material=pneus
 ```
 
 ```json
@@ -87,8 +88,8 @@ Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 | Situação | Resposta |
 |---|---|
 | CEP, distância ou material inválido, CEP ou ponto fora de Goiás | 422 |
-| CEP ou município que não existe | 404 |
-| IBGE ou ViaCEP fora do ar, sem cache | 503 |
+| CEP ou lugar não encontrado em Goiás | 404 |
+| API externa necessária fora do ar, sem cache | 503 |
 
 ## Quando uma API externa cai
 
@@ -134,7 +135,7 @@ app/
   main.py          rotas do web service
   pontos.py        a busca: junta as fontes, filtra e ordena
   overpass.py      pontos do OpenStreetMap
-  localizacao.py   CEP, municípios, coordenadas e limite de Goiás
+  localizacao.py   entende o local digitado, coordenadas e limite de Goiás
   materiais.py     materiais e etiquetas do OpenStreetMap
   externo.py       chamadas HTTP e cache
   erros.py         respostas de erro (RFC 7807)

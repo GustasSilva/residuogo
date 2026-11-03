@@ -2,10 +2,10 @@
 
 const LIMITES_DE_GOIAS = [[-19.5, -53.25], [-12.4, -45.9]];
 const ESTILO_DA_ORIGEM = { radius: 7, color: "#fff", weight: 2, fillColor: "#000", fillOpacity: 1 };
+const PARECE_CEP = /^[\d\s.-]+$/;
 
 const formulario = document.getElementById("busca");
-const campoCep = document.getElementById("cep");
-const campoMunicipio = document.getElementById("municipio");
+const campoLocal = document.getElementById("local");
 const campoMaterial = document.getElementById("material");
 const campoRaio = document.getElementById("raio");
 const botaoBuscar = document.getElementById("buscar");
@@ -20,7 +20,7 @@ let mapa = null;
 let camadaDaBusca = null;
 let marcadores = [];
 let selecionado = null;
-let pontoNoMapa = null; // local clicado, quando a busca parte do mapa
+let origemAtual = null; // o que esta sendo buscado: { local } ou { lat, lon }
 let buscaEmAndamento = null;
 
 // Tudo que vem do mapa aberto entra na pagina como texto, nunca como HTML.
@@ -58,27 +58,21 @@ async function chamarApi(caminho, opcoes) {
   return corpo;
 }
 
-function parametrosDaBusca(ponto) {
-  const parametros = new URLSearchParams({ raio_km: campoRaio.value });
-  if (ponto) {
-    parametros.set("lat", ponto.lat);
-    parametros.set("lon", ponto.lon);
-  } else if (campoCep.value) {
-    parametros.set("cep", campoCep.value);
-  } else if (campoMunicipio.value) {
-    parametros.set("municipio", campoMunicipio.value);
-  }
+function parametrosDaBusca(origem) {
+  const parametros = new URLSearchParams({ raio_km: campoRaio.value, ...origem });
   if (campoMaterial.value) parametros.set("material", campoMaterial.value);
   return parametros;
 }
 
-async function buscar(ponto = pontoNoMapa) {
+async function buscar(origem) {
   // Uma busca nova cancela a anterior, para a resposta antiga nao sobrescrever a nova.
   buscaEmAndamento?.abort();
   const busca = new AbortController();
   buscaEmAndamento = busca;
+  const origemAnterior = origemAtual;
+  origemAtual = origem;
 
-  const parametros = parametrosDaBusca(ponto);
+  const parametros = parametrosDaBusca(origem);
   indicarBusca(true);
   mostrarMensagem("Procurando pontos...");
   const demora = setTimeout(() => {
@@ -88,15 +82,13 @@ async function buscar(ponto = pontoNoMapa) {
   try {
     const dados = await chamarApi(`/api/pontos?${parametros}`, { signal: busca.signal });
     if (busca.signal.aborted) return;
-    pontoNoMapa = ponto;
-    if (ponto) {
-      campoCep.value = "";
-      campoMunicipio.value = "";
-    }
+    if (origem.lat) campoLocal.value = "";
     mostrarMensagem("");
     mostrarResultado(dados, parametros);
   } catch (erro) {
-    if (erro.name !== "AbortError") mostrarMensagem(erro.message, true);
+    if (erro.name === "AbortError") return;
+    origemAtual = origemAnterior;
+    mostrarMensagem(erro.message, true);
   } finally {
     clearTimeout(demora);
     if (buscaEmAndamento === busca) indicarBusca(false);
@@ -107,7 +99,7 @@ async function buscar(ponto = pontoNoMapa) {
 function limpar() {
   buscaEmAndamento?.abort();
   buscaEmAndamento = null;
-  pontoNoMapa = null;
+  origemAtual = null;
   selecionado = null;
   marcadores = [];
 
@@ -124,7 +116,7 @@ function limpar() {
     camadaDaBusca.clearLayers();
     mapa.fitBounds(LIMITES_DE_GOIAS);
   }
-  campoCep.focus();
+  campoLocal.focus();
 }
 
 function mostrarResultado(dados, parametros) {
@@ -143,7 +135,7 @@ function mostrarResultado(dados, parametros) {
   if (dados.fora_do_raio && dados.total > 0) {
     textos.unshift(`Não há pontos até ${dados.raio_km} km. A lista mostra os mais próximos, mesmo que mais longe.`);
   }
-  if (parametros.has("cep") && dados.origem.precisao !== "endereço") {
+  if (PARECE_CEP.test(parametros.get("local") ?? "") && dados.origem.precisao !== "endereço") {
     textos.push(`A rua não foi localizada no mapa. As distâncias contam a partir do ${dados.origem.precisao}.`);
   }
   avisos.replaceChildren(...textos.map((texto) => criar("p", { className: "aviso", textContent: texto })));
@@ -226,7 +218,7 @@ function criarMateriais(materiais) {
 function iniciarMapa() {
   const areaMapa = document.getElementById("mapa");
   if (!window.L) {
-    areaMapa.textContent = "Não foi possível carregar o mapa. A busca por CEP e por município continua funcionando.";
+    areaMapa.textContent = "Não foi possível carregar o mapa. A busca pelo campo acima continua funcionando.";
     return;
   }
 
@@ -323,19 +315,11 @@ function selecionar(indice, veioDoMapa = false) {
 async function carregarMunicipios() {
   try {
     const municipios = await chamarApi("/api/municipios");
-    const regioes = new Map();
-    for (const municipio of municipios) {
-      if (!regioes.has(municipio.regiao)) regioes.set(municipio.regiao, []);
-      regioes.get(municipio.regiao).push(municipio);
-    }
-    const grupos = [...regioes.keys()].sort((a, b) => a.localeCompare(b, "pt-BR")).map((regiao) =>
-      criar("optgroup", { label: `Região de ${regiao}` },
-        ...regioes.get(regiao).map((m) => criar("option", { value: m.codigo, textContent: m.nome })),
-      ),
+    document.getElementById("municipios").replaceChildren(
+      ...municipios.map((m) => criar("option", { value: m.nome, label: `Região de ${m.regiao}` })),
     );
-    campoMunicipio.replaceChildren(criar("option", { value: "", textContent: "Escolha um município" }), ...grupos);
   } catch {
-    campoMunicipio.replaceChildren(criar("option", { value: "", textContent: "Lista indisponível, use o CEP" }));
+    // Sem as sugestoes, digitar continua funcionando.
   }
 }
 
@@ -350,38 +334,39 @@ async function carregarMateriais() {
   }
 }
 
-// O CEP busca sozinho quando fica completo.
-campoCep.addEventListener("input", () => {
-  const digitos = campoCep.value.replace(/\D/g, "").slice(0, 8);
-  campoCep.value = digitos.length > 5 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : digitos;
-  pontoNoMapa = null;
-  if (digitos) campoMunicipio.value = "";
-  if (digitos.length === 8) buscar(null);
-});
-
-campoMunicipio.addEventListener("change", () => {
-  pontoNoMapa = null;
-  if (campoMunicipio.value) {
-    campoCep.value = "";
-    buscar(null);
+campoLocal.addEventListener("input", (evento) => {
+  if (PARECE_CEP.test(campoLocal.value)) {
+    // O CEP busca sozinho quando fica completo.
+    const digitos = campoLocal.value.replace(/\D/g, "").slice(0, 8);
+    campoLocal.value = digitos.length > 5 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : digitos;
+    if (digitos.length === 8) buscar({ local: campoLocal.value });
+    return;
   }
+
+  // Escolher um municipio nas sugestoes busca na hora. O resto espera o Enter ou o
+  // botao, porque o Nominatim nao permite uma consulta a cada letra digitada.
+  const escolheuNaLista = !evento.inputType || evento.inputType === "insertReplacementText";
+  if (escolheuNaLista && campoLocal.value.trim()) buscar({ local: campoLocal.value.trim() });
 });
 
 // Mudar um filtro refaz a busca atual.
 for (const filtro of [campoMaterial, campoRaio]) {
   filtro.addEventListener("change", () => {
-    if (pontoNoMapa || campoMunicipio.value || campoCep.value.length === 9) buscar();
+    if (origemAtual) buscar(origemAtual);
   });
 }
 
 formulario.addEventListener("submit", (evento) => {
   evento.preventDefault();
-  if (!pontoNoMapa && !campoCep.value && !campoMunicipio.value) {
-    mostrarMensagem("Informe um CEP, escolha um município ou clique no mapa.", true);
-    campoCep.focus();
-    return;
+  const texto = campoLocal.value.trim();
+  if (texto) {
+    buscar({ local: texto });
+  } else if (origemAtual) {
+    buscar(origemAtual);
+  } else {
+    mostrarMensagem("Digite um local ou clique no mapa.", true);
+    campoLocal.focus();
   }
-  buscar();
 });
 
 document.getElementById("limpar").addEventListener("click", limpar);

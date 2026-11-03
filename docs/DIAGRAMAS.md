@@ -53,7 +53,7 @@ sequenceDiagram
     participant O as Overpass
 
     Pessoa->>P: digita o CEP, escolhe material e distância
-    P->>S: GET /api/pontos?cep=...&raio_km=...&material=...
+    P->>S: GET /api/pontos?local=...&raio_km=...&material=...
     S->>V: endereço do CEP
     V-->>S: rua, bairro, cidade e código IBGE
     S->>N: coordenadas do endereço
@@ -85,11 +85,17 @@ flowchart TD
     raio -- não --> proximos["Mostra os 3 mais próximos do estado"]
 ```
 
-## Do CEP até as coordenadas
+## Do texto digitado até as coordenadas
 
 ```mermaid
 flowchart TD
-    cep["CEP"] --> viacep["ViaCEP: rua, bairro e cidade"]
+    texto["Texto digitado"] --> tipo{"O que é?"}
+    tipo -- "só números" --> viacep["ViaCEP: rua, bairro e cidade"]
+    tipo -- "nome de um município" --> cidade
+    tipo -- "outro texto" --> lugar["Nominatim: procura dentro de Goiás"]
+    lugar --> achou{"Achou?"}
+    achou -- sim --> r4["Usa o lugar encontrado"]
+    achou -- não --> erro["Erro 404, com uma dica"]
     viacep --> rua{"Nominatim achou a rua?"}
     rua -- sim --> r1["Precisão: endereço"]
     rua -- não --> bairro{"Achou o bairro?"}

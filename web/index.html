@@ -19,16 +19,10 @@
 
   <main>
     <form id="busca" novalidate>
-      <div class="campo">
-        <label for="cep">CEP</label>
-        <input id="cep" name="cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="74230-010">
-      </div>
-      <span class="ou">ou</span>
-      <div class="campo campo-largo">
-        <label for="municipio">Município</label>
-        <select id="municipio" name="municipio">
-          <option value="">Carregando...</option>
-        </select>
+      <div class="campo campo-local">
+        <label for="local">CEP, município, bairro ou endereço</label>
+        <input id="local" name="local" list="municipios" autocomplete="off" placeholder="Ex.: Setor Bueno, Goiânia">
+        <datalist id="municipios"></datalist>
       </div>
       <div class="campo campo-largo">
         <label for="material">O que você vai descartar</label>
@@ -63,7 +57,7 @@
           <a id="csv" download>Baixar lista em CSV</a>
         </div>
         <div id="avisos"></div>
-        <p id="instrucao">Informe um CEP, escolha um município ou clique no mapa para ver os pontos de coleta mais próximos.</p>
+        <p id="instrucao">Digite um local ou clique no mapa para ver os pontos de coleta mais próximos.</p>
         <table id="tabela" hidden>
           <thead>
             <tr>
