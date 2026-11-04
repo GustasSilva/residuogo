@@ -34,7 +34,6 @@ class ServicoIndisponivel(ErroDaBusca):
     titulo = "Serviço externo indisponível"
 
 
-# APS-TRECHO 7: Todas as respostas de erro no mesmo formato (RFC 7807)
 def _problema(request: Request, status: int, titulo: str, detalhe: str) -> JSONResponse:
     return JSONResponse(
         status_code=status,
@@ -69,4 +68,3 @@ def registrar_handlers(app: FastAPI) -> None:
     async def _inesperado(request: Request, exc: Exception) -> JSONResponse:
         logger.exception("Falha inesperada em %s", request.url.path)
         return _problema(request, 500, "Erro interno", "Ocorreu uma falha inesperada no servidor.")
-# APS-FIM

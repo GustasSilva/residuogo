@@ -52,7 +52,7 @@ ETIQUETAS_OSM = {
 
 
 def materiais_das_etiquetas(etiquetas: dict[str, str]) -> list[str]:
-    """Le as etiquetas `recycling:* = yes` e devolve as chaves de material."""
+    """Lê as etiquetas `recycling:* = yes` e devolve as chaves de material."""
     aceitos = {
         material
         for etiqueta, material in ETIQUETAS_OSM.items()

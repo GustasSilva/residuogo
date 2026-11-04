@@ -17,7 +17,7 @@ O projeto tem um web service REST próprio, que busca os dados em APIs públicas
 | ViaCEP | endereço a partir do CEP |
 | Nominatim (OpenStreetMap) | coordenadas de um endereço, bairro ou lugar; os pontos de coleta em volta; o estado de um ponto clicado no mapa |
 
-Uma explicação mais completa, voltada para o relatório e a apresentação, está em [docs/FUNCIONAMENTO.md](docs/FUNCIONAMENTO.md).
+Uma explicação mais completa, voltada para a apresentação, está em [docs/FUNCIONAMENTO.md](docs/FUNCIONAMENTO.md).
 
 ## Como rodar
 
@@ -88,6 +88,8 @@ GET /api/pontos?lat=-16.59&lon=-49.33&raio_km=2&material=eletronicos
 }
 ```
 
+As respostas de sucesso em `/api` trazem `Cache-Control: public, max-age=3600`, e as de erro, `no-store`.
+
 Se não houver nenhum ponto no raio, a resposta traz os 3 mais próximos em até 250 km, com `fora_do_raio` igual a `true`. Para achá-los, a busca aumenta a área aos poucos (50, 100 e 250 km) e junta o que encontrou em cada uma.
 
 O relatório em PDF traz a data, o local entendido, o material, o raio, a tabela dos pontos e as fontes dos dados, com a atribuição exigida pela licença do OpenStreetMap:
@@ -155,17 +157,8 @@ app/
     nominatim.py       coordenadas, pontos em volta e estado de um lugar
     cache.py           chamada HTTP com tempo limite e cache em SQLite
 web/                   página (HTML, CSS e JavaScript)
-scripts/               extração dos trechos de código para o relatório
 tests/
-docs/                  funcionamento, diagramas, telas e trechos para o relatório
+docs/                  funcionamento, diagramas e telas
 ```
 
 O código fica em três camadas, e cada uma só chama a de baixo: as rotas chamam os serviços, os serviços chamam as APIs, e toda consulta a uma API passa pelo cache. A única exceção é o contorno de Goiás, que não tem regra nenhuma e vai da API do IBGE direto para a rota.
-
-## Relatório da APS
-
-O relatório de código tem limite de 10 páginas. Os trechos escolhidos são marcados no código com `APS-TRECHO` e reunidos em `docs/TRECHOS_DE_CODIGO.md`:
-
-```
-python -m scripts.exportar_trechos
-```

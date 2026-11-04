@@ -1,4 +1,4 @@
-"""Formato das respostas da API, usado tambem pela documentacao em /docs."""
+"""Formato das respostas da API, usado também pela documentação em /docs."""
 
 from pydantic import BaseModel
 
@@ -39,4 +39,4 @@ class RespostaPontos(BaseModel):
     material: str | None
     total: int
     pontos: list[Ponto]
-    fora_do_raio: bool  # nada no raio: a lista traz os mais proximos numa area maior
+    fora_do_raio: bool  # nada no raio: a lista traz os mais próximos numa área maior

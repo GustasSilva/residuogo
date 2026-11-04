@@ -1,4 +1,4 @@
-"""De onde a pessoa esta buscando: CEP, municipio, texto livre ou clique no mapa."""
+"""De onde a pessoa está buscando: CEP, município, texto livre ou clique no mapa."""
 
 import re
 import unicodedata
@@ -14,11 +14,11 @@ def sem_acentos(texto: str) -> str:
     return "".join(c for c in decomposto if not unicodedata.combining(c)).casefold()
 
 
-# --- Municipios ---
+# --- Municípios ---
 
 
 def municipios() -> list[dict[str, str]]:
-    """Municipios de Goias em ordem alfabetica, sem levar os acentos em conta."""
+    """Municípios de Goiás em ordem alfabética, sem levar os acentos em conta."""
     return sorted(ibge.municipios(), key=lambda municipio: sem_acentos(municipio["nome"]))
 
 
@@ -54,9 +54,9 @@ def _endereco_do_cep(cep: str) -> dict:
 # --- Ponto de partida da busca ---
 
 
-# APS-TRECHO 3: Do texto digitado ate as coordenadas
+# APS-TRECHO 2: A localização e a busca dos pontos de coleta
 def origem_por_texto(texto: str) -> dict:
-    """Entende o que a pessoa digitou: CEP, municipio ou outro lugar (bairro, endereco...)."""
+    """Entende o que a pessoa digitou: CEP, município ou outro lugar (bairro, endereço...)."""
     texto = texto.strip()
     if re.fullmatch(r"[\d\s.-]+", texto):
         return _origem_por_cep(_limpar_cep(texto))
@@ -70,7 +70,7 @@ def origem_por_texto(texto: str) -> dict:
 
 
 def _origem_por_cep(cep: str) -> dict:
-    """O ViaCEP nao informa coordenadas: o Nominatim tenta a rua, depois o bairro, depois a cidade."""
+    """O ViaCEP não informa coordenadas: o Nominatim tenta a rua, depois o bairro, depois a cidade."""
     endereco = _endereco_do_cep(cep)
     cidade = endereco["localidade"]
     rua = endereco.get("logradouro", "")
@@ -98,7 +98,7 @@ def _origem_por_lugar(texto: str) -> dict:
 
 
 def _origem(descricao: str, tentativas: list[tuple[str, dict]]) -> dict:
-    """Usa a primeira tentativa que o Nominatim encontrar em Goias."""
+    """Usa a primeira tentativa que o Nominatim encontrar em Goiás."""
     for precisao, busca in tentativas:
         coordenadas = nominatim.coordenadas(**busca)
         if coordenadas:
@@ -109,7 +109,7 @@ def _origem(descricao: str, tentativas: list[tuple[str, dict]]) -> dict:
 
 
 def origem_por_coordenadas(latitude: float | None, longitude: float | None) -> dict:
-    """Ponto clicado no mapa. O retangulo descarta sem consultar a API o que esta claramente longe."""
+    """Ponto clicado no mapa. O retângulo descarta sem consultar a API o que está claramente longe."""
     if latitude is None or longitude is None:
         raise DadosInvalidos("Informe a latitude e a longitude do ponto.")
     if not no_retangulo(latitude, longitude, config.CAIXA_DE_GOIAS) or not nominatim.fica_em_goias(latitude, longitude):

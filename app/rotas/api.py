@@ -1,4 +1,4 @@
-"""As rotas do web service: o que a pagina, ou qualquer outro cliente, pode pedir."""
+"""As rotas do web service: o que a página, ou qualquer outro cliente, pode pedir."""
 
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
@@ -22,7 +22,7 @@ def _consultar(
     raio_km: int = Query(10, description="Distância máxima, em km."),
     material: str | None = Query(None, description="Chave de um item de /api/materiais."),
 ) -> dict:
-    """Valida os parametros e faz a busca. Serve as rotas em JSON e em CSV."""
+    """Valida os parâmetros e faz a busca. Serve as rotas em JSON, CSV e PDF."""
     tem_local = bool(local and local.strip())
     if tem_local == (lat is not None or lon is not None):
         raise DadosInvalidos("Informe um local ou um ponto no mapa, um dos dois.")
@@ -53,6 +53,23 @@ def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 
 
+@router.get("/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
+def listar_municipios() -> list[dict]:
+    return localizacao.municipios()
+
+
+@router.get("/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
+def listar_materiais() -> list[dict]:
+    return para_saida(list(MATERIAIS))
+
+
+@router.get("/goias", summary="Contorno oficial de Goiás (IBGE), em GeoJSON")
+def contorno_de_goias() -> JSONResponse:
+    # Não tem regra no meio: o contorno vai do IBGE direto para a página.
+    return JSONResponse(ibge.contorno_de_goias(), media_type="application/geo+json")
+# APS-FIM
+
+
 @router.get(
     "/pontos.csv",
     summary="Mesma busca de /api/pontos, em planilha CSV",
@@ -79,20 +96,3 @@ def relatorio_pontos(resultado: dict = Depends(_consultar)) -> Response:
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.pdf"'},
     )
-
-
-@router.get("/municipios", response_model=list[Municipio], summary="Municípios de Goiás e suas regiões")
-def listar_municipios() -> list[dict]:
-    return localizacao.municipios()
-
-
-@router.get("/materiais", response_model=list[Material], summary="Materiais aceitos no filtro da busca")
-def listar_materiais() -> list[dict]:
-    return para_saida(list(MATERIAIS))
-
-
-@router.get("/goias", summary="Contorno oficial de Goiás (IBGE), em GeoJSON")
-def contorno_de_goias() -> JSONResponse:
-    # Nao tem regra no meio: o contorno vai do IBGE direto para a pagina.
-    return JSONResponse(ibge.contorno_de_goias(), media_type="application/geo+json")
-# APS-FIM

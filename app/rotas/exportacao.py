@@ -1,4 +1,4 @@
-"""Arquivos da busca para baixar: planilha CSV e relatorio em PDF."""
+"""Arquivos da busca para baixar: planilha CSV e relatório em PDF."""
 
 import csv
 import io
@@ -9,7 +9,7 @@ from fpdf.fonts import FontFace
 
 from app.servicos.materiais import MATERIAIS
 
-# Como o ponto de partida foi localizado, para quem le saber o quanto ele e aproximado.
+# Como o ponto de partida foi localizado, para quem lê saber o quanto ele é aproximado.
 COMO_FOI_LOCALIZADO = {
     "endereço": "localizado pela rua",
     "bairro": "localizado pelo bairro",
@@ -30,7 +30,7 @@ NOTAS_DO_RELATORIO = [
 
 def planilha(pontos: list[dict]) -> str:
     saida = io.StringIO()
-    # O Excel em portugues separa colunas por ponto e virgula e decimais por virgula.
+    # O Excel em português separa colunas por ponto e vírgula e decimais por vírgula.
     escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
     escritor.writerow(["Nome", "Tipo", "Endereço", "Materiais", "Distância (km)", "Latitude", "Longitude"])
     for ponto in pontos:
@@ -45,23 +45,22 @@ def planilha(pontos: list[dict]) -> str:
                 _decimal(ponto["longitude"]),
             ]
         )
-    # O BOM (marca no inicio do arquivo) faz o Excel reconhecer os acentos.
+    # O BOM (marca no início do arquivo) faz o Excel reconhecer os acentos.
     return "﻿" + saida.getvalue()
 
 
 def _celula_segura(texto: str) -> str:
-    """Os nomes vem de um mapa aberto: impede que o Excel execute um deles como formula."""
+    """Os nomes vêm de um mapa aberto: impede que o Excel execute um deles como fórmula."""
     return f"'{texto}" if texto[:1] in ("=", "+", "-", "@") else texto
 
 
 # --- PDF ---
 
 
-# APS-TRECHO 10: O relatorio da busca em PDF
 def relatorio_pdf(resultado: dict) -> bytes:
-    """Relatorio da busca: de onde, o que, ate onde, a tabela dos pontos e as fontes dos dados."""
+    """Relatório da busca: de onde, o que, até onde, a tabela dos pontos e as fontes dos dados."""
     pdf = FPDF(orientation="landscape", format="A4")
-    # As fontes que todo leitor de PDF tem cobrem o Windows-1252, que inclui o portugues.
+    # As fontes que todo leitor de PDF tem cobrem o Windows-1252, que inclui o português.
     pdf.core_fonts_encoding = "windows-1252"
     pdf.set_title("ResíduoGO: pontos de coleta de resíduos")
     pdf.add_page()
@@ -95,11 +94,10 @@ def relatorio_pdf(resultado: dict) -> bytes:
         pdf.multi_cell(0, 4, nota, new_x="LMARGIN", new_y="NEXT")
         pdf.ln(1)
     return bytes(pdf.output())
-# APS-FIM
 
 
 def _cabecalho(pdf: FPDF, resultado: dict) -> None:
-    """Titulo, data e, um em cada linha, os dados da busca."""
+    """Título, data e, um em cada linha, os dados da busca."""
     pdf.set_font("Helvetica", "B", 18)
     pdf.cell(h=9, text="ResíduoGO: pontos de coleta de resíduos", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", size=9)
@@ -130,7 +128,7 @@ def _local(origem: dict) -> str:
 
 
 def _texto(texto: str) -> str:
-    """Nomes do mapa podem ter qualquer caractere: o que a fonte nao tem vira "?" em vez de derrubar o PDF."""
+    """Nomes do mapa podem ter qualquer caractere: o que a fonte não tem vira "?" em vez de derrubar o PDF."""
     return str(texto).encode("cp1252", "replace").decode("cp1252")
 
 

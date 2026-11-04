@@ -1,4 +1,4 @@
-// Pagina de consulta: conversa so com o web service do proprio projeto (/api).
+// Página de consulta: conversa só com o web service do próprio projeto (/api).
 
 const LIMITES_DE_GOIAS = [[-19.5, -53.25], [-12.4, -45.9]];
 const ESTILO_DA_ORIGEM = { radius: 7, color: "#fff", weight: 2, fillColor: "#000", fillOpacity: 1 };
@@ -23,7 +23,7 @@ let selecionado = null;
 let origemAtual = null; // o que esta sendo buscado: { local } ou { lat, lon }
 let buscaEmAndamento = null;
 
-// Tudo que vem do mapa aberto entra na pagina como texto, nunca como HTML.
+// Tudo que vem do mapa aberto entra na página como texto, nunca como HTML.
 function criar(tag, atributos = {}, ...filhos) {
   const elemento = document.createElement(tag);
   Object.assign(elemento, atributos);
@@ -42,7 +42,7 @@ function indicarBusca(buscando) {
   botaoBuscar.textContent = buscando ? "Buscando..." : "Buscar pontos";
 }
 
-// APS-TRECHO 8: A pagina consumindo o web service
+// APS-TRECHO 4: A página consumindo o web service
 async function chamarApi(caminho, opcoes) {
   let resposta;
   try {
@@ -65,7 +65,7 @@ function parametrosDaBusca(origem) {
 }
 
 async function buscar(origem) {
-  // Uma busca nova cancela a anterior, para a resposta antiga nao sobrescrever a nova.
+  // Uma busca nova cancela a anterior, para a resposta antiga não sobrescrever a nova.
   buscaEmAndamento?.abort();
   const busca = new AbortController();
   buscaEmAndamento = busca;
@@ -123,7 +123,7 @@ function mostrarResultado(dados, parametros) {
   const local = dados.origem.precisao === "mapa" ? "do ponto escolhido no mapa" : `de ${dados.origem.descricao}`;
   document.getElementById("resumo").textContent = tituloDoResultado(dados, local);
 
-  // Os arquivos repetem a busca da tela: os mesmos parametros, em outro formato.
+  // Os arquivos repetem a busca da tela: os mesmos parâmetros, em outro formato.
   document.getElementById("csv").href = `/api/pontos.csv?${parametros}`;
   document.getElementById("pdf").href = `/api/pontos.pdf?${parametros}`;
   document.getElementById("arquivos").hidden = dados.total === 0;
@@ -140,7 +140,7 @@ function mostrarResultado(dados, parametros) {
   linhas.replaceChildren(...dados.pontos.map(criarLinha));
   tabela.hidden = dados.total === 0;
 
-  // Um problema no mapa nao pode esconder a lista, que ja esta pronta.
+  // Um problema no mapa não pode esconder a lista, que já está pronta.
   try {
     desenharResultadoNoMapa(dados);
   } catch (erro) {
@@ -218,7 +218,7 @@ function iniciarMapa() {
     return;
   }
 
-  // Com o fechamento automatico, clicar no mapa com um ponto aberto so fecharia o ponto.
+  // Com o fechamento automático, clicar no mapa com um ponto aberto só fecharia o ponto.
   mapa = L.map(areaMapa, { closePopupOnClick: false }).fitBounds(LIMITES_DE_GOIAS);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -238,7 +238,7 @@ function iniciarMapa() {
       style: { color: "#0b5ea8", weight: 2, fill: false, interactive: false },
     }).addTo(mapa);
   }).catch(() => {
-    // O contorno so ajuda a enxergar o estado: a busca funciona sem ele.
+    // O contorno só ajuda a enxergar o estado: a busca funciona sem ele.
   });
 }
 
@@ -271,7 +271,7 @@ function desenharResultadoNoMapa(dados) {
     return marcador.addTo(camadaDaBusca);
   });
 
-  // Os mais proximos podem ficar fora do circulo: o mapa precisa mostrar todos.
+  // Os mais próximos podem ficar fora do círculo: o mapa precisa mostrar todos.
   const area = L.latLng(origem).toBounds(dados.raio_km * 2000);
   marcadores.forEach((marcador) => area.extend(marcador.getLatLng()));
   mapa.fitBounds(area);
@@ -315,7 +315,7 @@ async function carregarMunicipios() {
       ...municipios.map((m) => criar("option", { value: m.nome, label: `Região de ${m.regiao}` })),
     );
   } catch {
-    // Sem as sugestoes, digitar continua funcionando.
+    // Sem as sugestões, digitar continua funcionando.
   }
 }
 
@@ -339,8 +339,8 @@ campoLocal.addEventListener("input", (evento) => {
     return;
   }
 
-  // Escolher um municipio nas sugestoes busca na hora. O resto espera o Enter ou o
-  // botao, porque o Nominatim nao permite uma consulta a cada letra digitada.
+  // Escolher um município nas sugestões busca na hora. O resto espera o Enter ou o
+  // botão, porque o Nominatim não permite uma consulta a cada letra digitada.
   const escolheuNaLista = !evento.inputType || evento.inputType === "insertReplacementText";
   if (escolheuNaLista && campoLocal.value.trim()) buscar({ local: campoLocal.value.trim() });
 });

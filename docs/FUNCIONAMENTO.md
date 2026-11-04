@@ -36,8 +36,9 @@ Um site comum entrega páginas para pessoas. Um web service entrega **dados para
   - os códigos de status têm significado: 200 (ok), 404 (local não encontrado), 422 (dado inválido ou fora de Goiás) e 503 (API externa fora do ar);
   - o tipo do conteúdo vai no cabeçalho: `application/json`, `text/csv`, `application/pdf` e `application/problem+json`.
 - **Erros padronizados.** Todos seguem a RFC 7807 (Problem Details), um formato de erro que outro programa consegue ler.
+- **Respostas marcadas para cache.** As respostas de sucesso em `/api` trazem `Cache-Control: public, max-age=3600`, e as de erro, `no-store`. É a restrição de cache do REST: o cliente sabe o que pode reaproveitar. Isso é diferente do cache em SQLite, que guarda o que o serviço recebe das APIs externas.
 
-Termo técnico útil para o relatório: é uma API **REST de nível 2 no modelo de Richardson**, porque usa recursos identificados por URL e os verbos e códigos do HTTP.
+Termo técnico útil: é uma API **REST de nível 2 no modelo de Richardson**, porque usa recursos identificados por URL e os verbos e códigos do HTTP.
 
 ## 2. Os web services que ele consome
 
@@ -93,7 +94,7 @@ Cada camada só chama a de baixo: as rotas chamam os serviços, os serviços cha
 
 ## 7. Perguntas prováveis do professor
 
-- **"Por que não SOAP?"** O enunciado não exige SOAP. REST com JSON é o padrão atual das APIs públicas, inclusive das três que o projeto consome. No capítulo de fundamentos vale comparar os dois: SOAP com XML e WSDL, REST com JSON e OpenAPI.
+- **"Por que não SOAP?"** O enunciado não exige SOAP. REST com JSON é o padrão atual das APIs públicas, inclusive das três que o projeto consome. Comparando os dois: SOAP usa XML e WSDL, e REST usa JSON e OpenAPI.
 - **"Só tem GET?"** O serviço é de consulta, e REST não obriga ter todas as operações de cadastro (CRUD). `GET` é o verbo certo para leitura: não altera nada e pode ser guardado em cache.
 - **"Os dados são confiáveis?"** Vêm do OpenStreetMap, que é colaborativo. Não existe API oficial com esses pontos em Goiás, e o sistema avisa para confirmar o ponto antes de ir.
 - **"A distância é de carro?"** Não, é em linha reta (Haversine). O link "Como chegar" de cada ponto abre a rota real.

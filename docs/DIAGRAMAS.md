@@ -1,6 +1,6 @@
 # Diagramas
 
-Em Mermaid: o GitHub desenha direto, e em [mermaid.live](https://mermaid.live) dá para exportar a imagem para o relatório.
+Em Mermaid: o GitHub desenha direto, e em [mermaid.live](https://mermaid.live) dá para exportar a imagem.
 
 ## Componentes
 

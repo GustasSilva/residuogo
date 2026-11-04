@@ -22,7 +22,7 @@ _cliente = httpx.Client(headers={"User-Agent": config.USER_AGENT}, follow_redire
 
 
 class FalhaExterna(Exception):
-    """A API externa nao respondeu, ou respondeu algo que nao da para usar."""
+    """A API externa não respondeu, ou respondeu algo que não dá para usar."""
 
 
 # --- HTTP ---
@@ -38,7 +38,7 @@ def obter_json(url: str, servico: str, params: dict | None = None) -> Any:
 
 
 # --- Cache ---
-# Fica em arquivo para sobreviver ao reinicio do servidor.
+# Fica em arquivo para sobreviver ao reinício do servidor.
 
 
 def _conectar() -> sqlite3.Connection:
@@ -59,7 +59,7 @@ def _guardar(chave: str, valor: Any) -> None:
 
 
 def _ler(chave: str) -> tuple[Any, float] | None:
-    """Devolve (valor, momento em que foi guardado), mesmo que ja esteja vencido."""
+    """Devolve (valor, momento em que foi guardado), mesmo que já esteja vencido."""
     with closing(_conectar()) as conexao:
         linha = conexao.execute(
             "SELECT valor, guardado_em FROM cache WHERE chave = ?", (chave,)
@@ -67,11 +67,11 @@ def _ler(chave: str) -> tuple[Any, float] | None:
     return (json.loads(linha[0]), linha[1]) if linha else None
 
 
-# APS-TRECHO 6: Consulta externa com cache e tratamento de queda
+# APS-TRECHO 3: Consulta externa com cache e tratamento de queda
 def com_cache(chave: str, validade: int, servico: str, consultar: Callable[[], Any]) -> Any:
     """Devolve o dado do cache ou da API; se a API falhar, usa o cache vencido.
 
-    Sem API e sem cache, a busca nao tem como continuar e o cliente recebe 503.
+    Sem API e sem cache, a busca não tem como continuar e o cliente recebe 503.
     """
     guardado = _ler(chave)
     if guardado and time.time() - guardado[1] < validade:

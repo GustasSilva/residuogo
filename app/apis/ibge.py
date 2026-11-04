@@ -1,11 +1,11 @@
-"""API do IBGE: municipios de Goias e contorno oficial do estado."""
+"""API do IBGE: municípios de Goiás e contorno oficial do estado."""
 
 from app import config
 from app.apis.cache import FalhaExterna, com_cache, obter_json
 
 
 def municipios() -> list[dict[str, str]]:
-    """Municipios de Goias com o codigo e a regiao intermediaria do IBGE."""
+    """Municípios de Goiás com o código e a região intermediária do IBGE."""
     return com_cache("municipios-go", config.VALIDADE_ENDERECOS, "IBGE", _consultar_municipios)
 
 

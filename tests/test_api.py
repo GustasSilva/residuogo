@@ -344,3 +344,8 @@ def test_falha_inesperada_nao_vaza_detalhes(cliente, monkeypatch):
     resposta = cliente.get("/api/municipios")
     assert resposta.status_code == 500
     assert "segredo" not in resposta.text
+
+
+def test_resposta_informa_se_pode_ser_reaproveitada(cliente, apis_ok):
+    assert cliente.get("/api/materiais").headers["cache-control"] == "public, max-age=3600"
+    assert cliente.get("/api/pontos?local=74230").headers["cache-control"] == "no-store"
