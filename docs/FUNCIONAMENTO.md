@@ -97,4 +97,4 @@ Cada camada só chama a de baixo: as rotas chamam os serviços, os serviços cha
 - **"Só tem GET?"** O serviço é de consulta, e REST não obriga ter todas as operações de cadastro (CRUD). `GET` é o verbo certo para leitura: não altera nada e pode ser guardado em cache.
 - **"Os dados são confiáveis?"** Vêm do OpenStreetMap, que é colaborativo. Não existe API oficial com esses pontos em Goiás, e o sistema avisa para confirmar o ponto antes de ir.
 - **"A distância é de carro?"** Não, é em linha reta (Haversine). O link "Como chegar" de cada ponto abre a rota real.
-- **"O PDF comprova a destinação do resíduo?"** Não. Ele é um levantamento de opções, que pode apoiar o PGRS (Lei 12.305/2010) e o controle operacional da ISO 14001 (item 8.1). O comprovante de destinação é outro documento, e o próprio relatório avisa isso.
+- **"O PDF comprova a destinação do resíduo?"** Não. Ele é um levantamento de opções, que pode apoiar o PGRS (Lei 12.305/2010) e o controle operacional da ISO 14001 (item 8.1). O comprovante de destinação é outro documento.

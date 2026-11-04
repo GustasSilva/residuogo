@@ -123,7 +123,7 @@ As cores dos materiais na tela seguem a Resolução CONAMA 275/2001. Os itens qu
 
 ## Relação com a gestão ambiental
 
-Dar o destino correto aos resíduos é um dos controles mais comuns na gestão ambiental de uma organização, tema da família ISO 14000. O ResíduoGO ajuda empresas e moradores a encontrar onde entregar cada tipo de resíduo. O relatório em PDF e a lista em CSV deixam as opções registradas para quem cuida disso na organização: o PDF lembra que pode apoiar o levantamento de alternativas de destinação no Plano de Gerenciamento de Resíduos Sólidos (PGRS), previsto na Lei 12.305/2010, e o controle operacional da ISO 14001 (item 8.1), sem substituir o comprovante de destinação.
+Dar o destino correto aos resíduos é um dos controles mais comuns na gestão ambiental de uma organização, tema da família ISO 14000. O ResíduoGO ajuda empresas e moradores a encontrar onde entregar cada tipo de resíduo. O relatório em PDF e a lista em CSV deixam as opções registradas para quem cuida disso na organização: o PDF lembra que pode apoiar o levantamento de alternativas de destinação no Plano de Gerenciamento de Resíduos Sólidos (PGRS), previsto na Lei 12.305/2010, e o controle operacional da ISO 14001.
 
 ## Testes
 

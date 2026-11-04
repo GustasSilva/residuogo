@@ -288,15 +288,18 @@ def test_relatorio_pdf_da_busca(cliente, apis_ok):
 
     texto = texto_do_pdf(resposta.content)
     for trecho in [
-        "Local: Avenida T 15, Setor Bueno, Goiânia - GO (localizado pela rua)",
-        "Material: Papel e papelão",
-        "Distância máxima: 10 km",
+        "Local Avenida T 15, Setor Bueno, Goiânia - GO (localizado pela rua)",
+        "Material Papel e papelão",
+        "Distância máxima 10 km",
+        "Pontos encontrados 1",
         "Cooperativa Recicla Goiás",
         "1,1 km",
         "Lei 12.305/2010",
         "© colaboradores do OpenStreetMap",
     ]:
         assert trecho in texto
+    for retirado in ["linha reta", "mapa colaborativo", "licenciamento", "comprovante", "item 8.1"]:
+        assert retirado not in texto
 
 
 def test_relatorio_pdf_avisa_quando_mostra_os_mais_proximos(cliente, apis_ok):
@@ -308,7 +311,7 @@ def test_relatorio_pdf_avisa_quando_mostra_os_mais_proximos(cliente, apis_ok):
 
 def test_relatorio_pdf_sem_pontos(cliente, apis_ok):
     texto = texto_do_pdf(cliente.get("/api/pontos.pdf", params={"lat": -16.80, "lon": -49.37}).content)
-    assert "Local: ponto escolhido no mapa (-16.80000, -49.37000)" in texto
+    assert "Local Ponto escolhido no mapa (-16.80000, -49.37000)" in texto
     assert "Nenhum ponto encontrado" in texto
 
 

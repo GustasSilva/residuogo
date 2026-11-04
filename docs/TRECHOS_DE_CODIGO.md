@@ -2,7 +2,7 @@
 
 Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
-10 trechos, 365 linhas. O limite é de cerca de 380 linhas.
+10 trechos, 354 linhas. O limite é de cerca de 380 linhas.
 
 ## 1. As rotas do web service
 
@@ -396,24 +396,13 @@ def relatorio_pdf(resultado: dict) -> bytes:
     pdf.core_fonts_encoding = "windows-1252"
     pdf.set_title("ResíduoGO: pontos de coleta de resíduos")
     pdf.add_page()
-
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(text="ResíduoGO: pontos de coleta de resíduos", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", size=10)
-    material = MATERIAIS.get(resultado["material"], "qualquer material")
-    for linha in (
-        f"Gerado em {datetime.now():%d/%m/%Y às %H:%M}",
-        _local(resultado["origem"]),
-        f"Material: {material}   |   Distância máxima: {resultado['raio_km']} km   |   Pontos: {resultado['total']}",
-    ):
-        pdf.cell(text=_texto(linha), new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(3)
+    _cabecalho(pdf, resultado)
 
     if resultado["fora_do_raio"] and resultado["pontos"]:
         pdf.set_font("Helvetica", "B", 10)
         aviso = f"Não há pontos até {resultado['raio_km']} km. A tabela mostra os mais próximos, mesmo que mais longe."
-        pdf.cell(text=aviso, new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
+        pdf.cell(h=6, text=aviso, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
 
     pdf.set_font("Helvetica", size=9)
     if resultado["pontos"]:
@@ -429,7 +418,7 @@ def relatorio_pdf(resultado: dict) -> bytes:
                     _materiais(ponto),
                 ])
     else:
-        pdf.cell(text="Nenhum ponto encontrado para esta busca.", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(h=6, text="Nenhum ponto encontrado para esta busca.", new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(5)
     pdf.set_font("Helvetica", size=8)

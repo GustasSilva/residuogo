@@ -18,12 +18,9 @@ COMO_FOI_LOCALIZADO = {
 }
 
 NOTAS_DO_RELATORIO = [
-    "Distâncias em linha reta. Os pontos vêm de um mapa colaborativo: confirme o funcionamento e o "
-    "licenciamento ambiental do ponto antes de destinar o resíduo.",
     "Este relatório pode apoiar o levantamento de alternativas de destinação no Plano de Gerenciamento de "
     "Resíduos Sólidos (PGRS) da organização, previsto na Política Nacional de Resíduos Sólidos "
-    "(Lei 12.305/2010), e o controle operacional da ISO 14001 (item 8.1). Ele não substitui o comprovante "
-    "de destinação.",
+    "(Lei 12.305/2010), e o controle operacional da ISO 14001.",
     "Fontes: © colaboradores do OpenStreetMap (openstreetmap.org/copyright), IBGE e ViaCEP.",
 ]
 
@@ -68,24 +65,13 @@ def relatorio_pdf(resultado: dict) -> bytes:
     pdf.core_fonts_encoding = "windows-1252"
     pdf.set_title("ResíduoGO: pontos de coleta de resíduos")
     pdf.add_page()
-
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(text="ResíduoGO: pontos de coleta de resíduos", new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font("Helvetica", size=10)
-    material = MATERIAIS.get(resultado["material"], "qualquer material")
-    for linha in (
-        f"Gerado em {datetime.now():%d/%m/%Y às %H:%M}",
-        _local(resultado["origem"]),
-        f"Material: {material}   |   Distância máxima: {resultado['raio_km']} km   |   Pontos: {resultado['total']}",
-    ):
-        pdf.cell(text=_texto(linha), new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(3)
+    _cabecalho(pdf, resultado)
 
     if resultado["fora_do_raio"] and resultado["pontos"]:
         pdf.set_font("Helvetica", "B", 10)
         aviso = f"Não há pontos até {resultado['raio_km']} km. A tabela mostra os mais próximos, mesmo que mais longe."
-        pdf.cell(text=aviso, new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
+        pdf.cell(h=6, text=aviso, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
 
     pdf.set_font("Helvetica", size=9)
     if resultado["pontos"]:
@@ -101,7 +87,7 @@ def relatorio_pdf(resultado: dict) -> bytes:
                     _materiais(ponto),
                 ])
     else:
-        pdf.cell(text="Nenhum ponto encontrado para esta busca.", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(h=6, text="Nenhum ponto encontrado para esta busca.", new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(5)
     pdf.set_font("Helvetica", size=8)
@@ -112,10 +98,35 @@ def relatorio_pdf(resultado: dict) -> bytes:
 # APS-FIM
 
 
+def _cabecalho(pdf: FPDF, resultado: dict) -> None:
+    """Titulo, data e, um em cada linha, os dados da busca."""
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.cell(h=9, text="ResíduoGO: pontos de coleta de resíduos", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=9)
+    pdf.set_text_color(90)
+    pdf.cell(h=5, text=f"Relatório gerado em {datetime.now():%d/%m/%Y às %H:%M}", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0)
+    pdf.ln(2)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.w - pdf.r_margin, pdf.get_y())
+    pdf.ln(4)
+
+    for rotulo, valor in (
+        ("Local", _local(resultado["origem"])),
+        ("Material", MATERIAIS.get(resultado["material"], "Qualquer material")),
+        ("Distância máxima", f"{resultado['raio_km']} km"),
+        ("Pontos encontrados", str(resultado["total"])),
+    ):
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.cell(38, 6, rotulo)
+        pdf.set_font("Helvetica", size=10)
+        pdf.multi_cell(0, 6, _texto(valor), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+
 def _local(origem: dict) -> str:
     if origem["precisao"] == "mapa":
-        return f"Local: ponto escolhido no mapa ({origem['latitude']:.5f}, {origem['longitude']:.5f})"
-    return f"Local: {origem['descricao']} ({COMO_FOI_LOCALIZADO[origem['precisao']]})"
+        return f"Ponto escolhido no mapa ({origem['latitude']:.5f}, {origem['longitude']:.5f})"
+    return f"{origem['descricao']} ({COMO_FOI_LOCALIZADO[origem['precisao']]})"
 
 
 def _texto(texto: str) -> str:
