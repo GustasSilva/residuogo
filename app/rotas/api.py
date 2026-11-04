@@ -1,14 +1,12 @@
 """As rotas do web service: o que a pagina, ou qualquer outro cliente, pode pedir."""
 
-import csv
-import io
-
 from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
 
 from app import config
 from app.apis import ibge
 from app.erros import DadosInvalidos
+from app.rotas import exportacao
 from app.rotas.schemas import Material, Municipio, RespostaPontos
 from app.servicos import localizacao, pontos
 from app.servicos.materiais import MATERIAIS, para_saida
@@ -55,12 +53,31 @@ def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 
 
-@router.get("/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
+@router.get(
+    "/pontos.csv",
+    summary="Mesma busca de /api/pontos, em planilha CSV",
+    response_class=Response,
+    responses={200: {"content": {"text/csv": {}}, "description": "Planilha separada por ponto e vírgula"}},
+)
 def exportar_pontos(resultado: dict = Depends(_consultar)) -> Response:
     return Response(
-        content=_planilha(resultado["pontos"]),
+        content=exportacao.planilha(resultado["pontos"]),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.csv"'},
+    )
+
+
+@router.get(
+    "/pontos.pdf",
+    summary="Mesma busca de /api/pontos, em relatório PDF",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}, "description": "Relatório da busca"}},
+)
+def relatorio_pontos(resultado: dict = Depends(_consultar)) -> Response:
+    return Response(
+        content=exportacao.relatorio_pdf(resultado),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.pdf"'},
     )
 
 
@@ -79,34 +96,3 @@ def contorno_de_goias() -> JSONResponse:
     # Nao tem regra no meio: o contorno vai do IBGE direto para a pagina.
     return JSONResponse(ibge.contorno_de_goias(), media_type="application/geo+json")
 # APS-FIM
-
-
-def _planilha(encontrados: list[dict]) -> str:
-    saida = io.StringIO()
-    # O Excel em portugues separa colunas por ponto e virgula e decimais por virgula.
-    escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
-    escritor.writerow(["Nome", "Tipo", "Endereço", "Materiais", "Distância (km)", "Latitude", "Longitude"])
-    for ponto in encontrados:
-        materiais = ", ".join(item["rotulo"] for item in ponto["materiais"]) or "Não informado"
-        escritor.writerow(
-            [
-                _celula_segura(ponto["nome"]),
-                ponto["tipo"],
-                _celula_segura(ponto["endereco"]),
-                materiais,
-                _decimal(ponto["distancia_km"]),
-                _decimal(ponto["latitude"]),
-                _decimal(ponto["longitude"]),
-            ]
-        )
-    # O BOM (marca no inicio do arquivo) faz o Excel reconhecer os acentos.
-    return "﻿" + saida.getvalue()
-
-
-def _decimal(numero: float) -> str:
-    return str(numero).replace(".", ",")
-
-
-def _celula_segura(texto: str) -> str:
-    """Os nomes vem de um mapa aberto: impede que o Excel execute um deles como formula."""
-    return f"'{texto}" if texto[:1] in ("=", "+", "-", "@") else texto

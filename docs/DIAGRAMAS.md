@@ -12,7 +12,8 @@ flowchart TB
 
     subgraph servico["Web service REST (FastAPI)"]
         subgraph rotas["rotas/"]
-            api["api.py<br/>as 5 rotas"]
+            api["api.py<br/>as 6 rotas"]
+            exportacao["exportacao.py<br/>CSV e PDF"]
         end
         subgraph servicos["servicos/"]
             localizacao["localizacao.py<br/>o local da busca"]
@@ -33,8 +34,9 @@ flowchart TB
     api_nominatim["API do Nominatim<br/>(OpenStreetMap)"]
     tiles["Mapa do OpenStreetMap"]
 
-    pagina -- "JSON e CSV" --> api
+    pagina -- "JSON, CSV e PDF" --> api
     pagina -- "imagens do mapa" --> tiles
+    api --> exportacao
     api --> localizacao
     api --> pontos
     api -- "contorno" --> ibge
@@ -92,8 +94,13 @@ flowchart TD
     guardar --> filtrar
     filtrar --> raio{"Tem ponto na<br/>distância escolhida?"}
     raio -- sim --> lista["Mostra os pontos do raio"]
-    raio -- não --> proximos["Busca de novo em 250 km<br/>e mostra os 3 mais próximos"]
+    raio -- não --> area["Procura numa área maior<br/>(50, depois 100, depois 250 km)<br/>e junta com o que já achou"]
+    area --> tres{"Os 3 mais próximos já estão<br/>dentro desta área?"}
+    tres -- "não, e ainda há área maior" --> area
+    tres -- "sim, ou chegou a 250 km" --> proximos["Mostra os 3 mais próximos"]
 ```
+
+As áreas menores vêm primeiro porque, numa área grande, os muitos pontos do DF ocupam o limite de 50 resultados do Nominatim e pontos de Goiás podem ficar de fora.
 
 ## Do texto digitado até as coordenadas
 

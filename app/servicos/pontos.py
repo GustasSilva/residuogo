@@ -8,8 +8,10 @@ from app.servicos.geo import caixa_em_volta, distancia_km
 from app.servicos.materiais import materiais_das_etiquetas, para_saida
 
 QUANTOS_MAIS_PROXIMOS = 3
-# Sem nada no raio escolhido, os mais proximos sao procurados nesta distancia.
-RAIO_DOS_MAIS_PROXIMOS_KM = 250
+# Sem nada no raio escolhido, a busca aumenta a area ate achar os mais proximos. As areas
+# menores vem primeiro: numa area grande, os muitos pontos do DF tomam o limite de
+# resultados do Nominatim e pontos de Goias, mesmo perto, podem ficar de fora.
+RAIOS_DOS_MAIS_PROXIMOS_KM = (50, 100, 250)
 
 # Entidades que recebem embalagens de agrotoxicos: o OpenStreetMap nao informa o
 # material, mas sem isso alguem procurando onde levar papel seria mandado para la.
@@ -88,8 +90,8 @@ def _lugares(caixa: str) -> list[dict]:
     return list({(lugar["osm_type"], lugar["osm_id"]): lugar for lugar in encontrados}.values())
 
 
-def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, material: str | None) -> list[dict]:
-    """Pontos ate raio_km que servem para o material, do mais perto para o mais longe.
+def _pontos_na_area(latitude: float, longitude: float, raio_km: float, material: str | None) -> list[dict]:
+    """Pontos do retangulo em volta do raio que servem para o material, do mais perto para o mais longe.
 
     Com um material escolhido, tambem entram os pontos que nao informam o que
     aceitam: a tela avisa a pessoa para confirmar antes de ir.
@@ -99,18 +101,25 @@ def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, materia
         if not ponto or (material and ponto["materiais"] and material not in ponto["materiais"]):
             continue
         distancia = round(distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"]), 1)
-        if distancia <= raio_km:
-            resultado.append({**ponto, "distancia_km": distancia, "materiais": para_saida(ponto["materiais"])})
+        resultado.append({**ponto, "distancia_km": distancia, "materiais": para_saida(ponto["materiais"])})
     return sorted(resultado, key=lambda ponto: ponto["distancia_km"])
 
 
 def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> dict:
-    """Pontos dentro do raio. Sem nenhum, os mais proximos numa area maior."""
-    no_raio = _pontos_ordenados(latitude, longitude, raio_km, material)
+    """Pontos dentro do raio. Sem nenhum, os mais proximos, aumentando a area aos poucos."""
+    no_raio = [ponto for ponto in _pontos_na_area(latitude, longitude, raio_km, material) if ponto["distancia_km"] <= raio_km]
     if no_raio:
         return {"pontos": no_raio, "fora_do_raio": False}
 
-    # Goias tem poucos pontos mapeados, entao um raio vazio e comum.
-    mais_proximos = _pontos_ordenados(latitude, longitude, RAIO_DOS_MAIS_PROXIMOS_KM, material)
+    # Goias tem poucos pontos mapeados, entao um raio vazio e comum. Junta tudo o que cada
+    # area achou, para um ponto perto encontrado na area pequena nao se perder na grande.
+    encontrados = {}
+    for raio in RAIOS_DOS_MAIS_PROXIMOS_KM:
+        for ponto in _pontos_na_area(latitude, longitude, raio, material):
+            encontrados[(ponto["latitude"], ponto["longitude"])] = ponto
+        mais_proximos = sorted(encontrados.values(), key=lambda ponto: ponto["distancia_km"])
+        # Para quando os mais proximos ja estao dentro do raio desta area, que foi toda procurada.
+        if len(mais_proximos) >= QUANTOS_MAIS_PROXIMOS and mais_proximos[QUANTOS_MAIS_PROXIMOS - 1]["distancia_km"] <= raio:
+            break
     return {"pontos": mais_proximos[:QUANTOS_MAIS_PROXIMOS], "fora_do_raio": True}
 # APS-FIM

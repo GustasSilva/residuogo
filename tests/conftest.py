@@ -68,13 +68,15 @@ def nominatim(apis):
     """Simula o Nominatim. Cada teste troca o que cada tipo de busca devolve.
 
     - `pontos`: resposta de q=[amenity=recycling]
+    - `pontos_por_caixa`: resposta de q=[amenity=recycling] para uma caixa especifica, quando houver
     - `ecopontos`: resposta de q=ecoponto
     - `enderecos`: resposta das outras buscas (rua, bairro, cidade, texto livre)
     - `estado`: o estado devolvido pela busca reversa (clique no mapa)
     - `fora_do_ar`: quando verdadeiro, toda chamada responde 503
     """
     simulado = SimpleNamespace(
-        pontos=[], ecopontos=[], enderecos=[lugar(-16.70, -49.27)], estado="BR-GO", fora_do_ar=False, buscas=[]
+        pontos=[], pontos_por_caixa={}, ecopontos=[], enderecos=[lugar(-16.70, -49.27)],
+        estado="BR-GO", fora_do_ar=False, buscas=[],
     )
 
     def buscar(request):
@@ -82,8 +84,11 @@ def nominatim(apis):
             return httpx.Response(503)
         parametros = dict(request.url.params)
         simulado.buscas.append(parametros)
-        respostas = {"[amenity=recycling]": simulado.pontos, "ecoponto": simulado.ecopontos}
-        return httpx.Response(200, json=respostas.get(parametros.get("q"), simulado.enderecos))
+        if parametros.get("q") == "[amenity=recycling]":
+            return httpx.Response(200, json=simulado.pontos_por_caixa.get(parametros["viewbox"], simulado.pontos))
+        if parametros.get("q") == "ecoponto":
+            return httpx.Response(200, json=simulado.ecopontos)
+        return httpx.Response(200, json=simulado.enderecos)
 
     def reverso(request):
         if simulado.fora_do_ar:

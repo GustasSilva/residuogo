@@ -2,7 +2,7 @@
 
 Gerado por `scripts/exportar_trechos.py`. Não editar à mão.
 
-9 trechos, 291 linhas. O limite é de cerca de 380 linhas.
+10 trechos, 365 linhas. O limite é de cerca de 380 linhas.
 
 ## 1. As rotas do web service
 
@@ -47,12 +47,31 @@ def buscar_pontos(resultado: dict = Depends(_consultar)) -> dict:
     return resultado
 
 
-@router.get("/pontos.csv", summary="Mesma busca de /api/pontos, em planilha CSV")
+@router.get(
+    "/pontos.csv",
+    summary="Mesma busca de /api/pontos, em planilha CSV",
+    response_class=Response,
+    responses={200: {"content": {"text/csv": {}}, "description": "Planilha separada por ponto e vírgula"}},
+)
 def exportar_pontos(resultado: dict = Depends(_consultar)) -> Response:
     return Response(
-        content=_planilha(resultado["pontos"]),
+        content=exportacao.planilha(resultado["pontos"]),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.csv"'},
+    )
+
+
+@router.get(
+    "/pontos.pdf",
+    summary="Mesma busca de /api/pontos, em relatório PDF",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}, "description": "Relatório da busca"}},
+)
+def relatorio_pontos(resultado: dict = Depends(_consultar)) -> Response:
+    return Response(
+        content=exportacao.relatorio_pdf(resultado),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="pontos-de-coleta.pdf"'},
     )
 
 
@@ -87,8 +106,8 @@ def _lugares(caixa: str) -> list[dict]:
     return list({(lugar["osm_type"], lugar["osm_id"]): lugar for lugar in encontrados}.values())
 
 
-def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, material: str | None) -> list[dict]:
-    """Pontos ate raio_km que servem para o material, do mais perto para o mais longe.
+def _pontos_na_area(latitude: float, longitude: float, raio_km: float, material: str | None) -> list[dict]:
+    """Pontos do retangulo em volta do raio que servem para o material, do mais perto para o mais longe.
 
     Com um material escolhido, tambem entram os pontos que nao informam o que
     aceitam: a tela avisa a pessoa para confirmar antes de ir.
@@ -98,19 +117,26 @@ def _pontos_ordenados(latitude: float, longitude: float, raio_km: float, materia
         if not ponto or (material and ponto["materiais"] and material not in ponto["materiais"]):
             continue
         distancia = round(distancia_km(latitude, longitude, ponto["latitude"], ponto["longitude"]), 1)
-        if distancia <= raio_km:
-            resultado.append({**ponto, "distancia_km": distancia, "materiais": para_saida(ponto["materiais"])})
+        resultado.append({**ponto, "distancia_km": distancia, "materiais": para_saida(ponto["materiais"])})
     return sorted(resultado, key=lambda ponto: ponto["distancia_km"])
 
 
 def buscar(latitude: float, longitude: float, raio_km: int, material: str | None) -> dict:
-    """Pontos dentro do raio. Sem nenhum, os mais proximos numa area maior."""
-    no_raio = _pontos_ordenados(latitude, longitude, raio_km, material)
+    """Pontos dentro do raio. Sem nenhum, os mais proximos, aumentando a area aos poucos."""
+    no_raio = [ponto for ponto in _pontos_na_area(latitude, longitude, raio_km, material) if ponto["distancia_km"] <= raio_km]
     if no_raio:
         return {"pontos": no_raio, "fora_do_raio": False}
 
-    # Goias tem poucos pontos mapeados, entao um raio vazio e comum.
-    mais_proximos = _pontos_ordenados(latitude, longitude, RAIO_DOS_MAIS_PROXIMOS_KM, material)
+    # Goias tem poucos pontos mapeados, entao um raio vazio e comum. Junta tudo o que cada
+    # area achou, para um ponto perto encontrado na area pequena nao se perder na grande.
+    encontrados = {}
+    for raio in RAIOS_DOS_MAIS_PROXIMOS_KM:
+        for ponto in _pontos_na_area(latitude, longitude, raio, material):
+            encontrados[(ponto["latitude"], ponto["longitude"])] = ponto
+        mais_proximos = sorted(encontrados.values(), key=lambda ponto: ponto["distancia_km"])
+        # Para quando os mais proximos ja estao dentro do raio desta area, que foi toda procurada.
+        if len(mais_proximos) >= QUANTOS_MAIS_PROXIMOS and mais_proximos[QUANTOS_MAIS_PROXIMOS - 1]["distancia_km"] <= raio:
+            break
     return {"pontos": mais_proximos[:QUANTOS_MAIS_PROXIMOS], "fora_do_raio": True}
 ```
 
@@ -356,4 +382,59 @@ def distancia_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     delta_lambda = math.radians(lon2 - lon1)
     a = math.sin(delta_fi / 2) ** 2 + math.cos(fi1) * math.cos(fi2) * math.sin(delta_lambda / 2) ** 2
     return 6371 * 2 * math.asin(math.sqrt(a))
+```
+
+## 10. O relatorio da busca em PDF
+
+`app/rotas/exportacao.py`
+
+```python
+def relatorio_pdf(resultado: dict) -> bytes:
+    """Relatorio da busca: de onde, o que, ate onde, a tabela dos pontos e as fontes dos dados."""
+    pdf = FPDF(orientation="landscape", format="A4")
+    # As fontes que todo leitor de PDF tem cobrem o Windows-1252, que inclui o portugues.
+    pdf.core_fonts_encoding = "windows-1252"
+    pdf.set_title("ResíduoGO: pontos de coleta de resíduos")
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 16)
+    pdf.cell(text="ResíduoGO: pontos de coleta de resíduos", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", size=10)
+    material = MATERIAIS.get(resultado["material"], "qualquer material")
+    for linha in (
+        f"Gerado em {datetime.now():%d/%m/%Y às %H:%M}",
+        _local(resultado["origem"]),
+        f"Material: {material}   |   Distância máxima: {resultado['raio_km']} km   |   Pontos: {resultado['total']}",
+    ):
+        pdf.cell(text=_texto(linha), new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(3)
+
+    if resultado["fora_do_raio"] and resultado["pontos"]:
+        pdf.set_font("Helvetica", "B", 10)
+        aviso = f"Não há pontos até {resultado['raio_km']} km. A tabela mostra os mais próximos, mesmo que mais longe."
+        pdf.cell(text=aviso, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+    pdf.set_font("Helvetica", size=9)
+    if resultado["pontos"]:
+        cabecalho = FontFace(emphasis="BOLD", fill_color=(230, 230, 230))
+        with pdf.table(col_widths=(62, 38, 77, 20, 80), headings_style=cabecalho, line_height=5, text_align="LEFT") as tabela:
+            tabela.row(["Nome", "Tipo", "Endereço", "Distância", "Materiais"])
+            for ponto in resultado["pontos"]:
+                tabela.row([
+                    _texto(ponto["nome"]),
+                    ponto["tipo"],
+                    _texto(ponto["endereco"]) or "-",
+                    f"{_decimal(ponto['distancia_km'])} km",
+                    _materiais(ponto),
+                ])
+    else:
+        pdf.cell(text="Nenhum ponto encontrado para esta busca.", new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(5)
+    pdf.set_font("Helvetica", size=8)
+    for nota in NOTAS_DO_RELATORIO:
+        pdf.multi_cell(0, 4, nota, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
+    return bytes(pdf.output())
 ```

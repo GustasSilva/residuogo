@@ -1,7 +1,9 @@
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 httpx==0.28.1
+fpdf2==2.9.0
 
 # Testes
 pytest==8.3.4
 respx==0.22.0
+pypdf==6.21.4

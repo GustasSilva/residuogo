@@ -123,9 +123,10 @@ function mostrarResultado(dados, parametros) {
   const local = dados.origem.precisao === "mapa" ? "do ponto escolhido no mapa" : `de ${dados.origem.descricao}`;
   document.getElementById("resumo").textContent = tituloDoResultado(dados, local);
 
-  const linkCsv = document.getElementById("csv");
-  linkCsv.href = `/api/pontos.csv?${parametros}`;
-  linkCsv.hidden = dados.total === 0;
+  // Os arquivos repetem a busca da tela: os mesmos parametros, em outro formato.
+  document.getElementById("csv").href = `/api/pontos.csv?${parametros}`;
+  document.getElementById("pdf").href = `/api/pontos.pdf?${parametros}`;
+  document.getElementById("arquivos").hidden = dados.total === 0;
 
   const textos = [];
   if (dados.fora_do_raio && dados.total > 0) {

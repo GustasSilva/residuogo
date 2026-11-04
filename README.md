@@ -17,6 +17,8 @@ O projeto tem um web service REST próprio, que busca os dados em APIs públicas
 | ViaCEP | endereço a partir do CEP |
 | Nominatim (OpenStreetMap) | coordenadas de um endereço, bairro ou lugar; os pontos de coleta em volta; o estado de um ponto clicado no mapa |
 
+Uma explicação mais completa, voltada para o relatório e a apresentação, está em [docs/FUNCIONAMENTO.md](docs/FUNCIONAMENTO.md).
+
 ## Como rodar
 
 Precisa do Python 3.10 ou mais novo (testado no 3.11). No PowerShell, a partir da raiz do projeto:
@@ -38,6 +40,7 @@ uvicorn app.main:app --reload
 - Clicar no mapa procura a partir daquele lugar, desde que seja dentro de Goiás.
 - Mudar o material ou a distância refaz a busca atual.
 - Passar o mouse em um ponto da lista destaca o ponto no mapa, e clicar em um marcador destaca o ponto na lista.
+- "Lista em CSV" e "Relatório em PDF" baixam a busca que está na tela.
 - "Limpar busca" volta a página ao início.
 
 ## API
@@ -46,11 +49,12 @@ uvicorn app.main:app --reload
 |---|---|
 | `GET /api/pontos` | pontos perto de um local ou ponto no mapa |
 | `GET /api/pontos.csv` | a mesma busca, em planilha |
+| `GET /api/pontos.pdf` | a mesma busca, em relatório PDF |
 | `GET /api/municipios` | municípios de Goiás, com a região |
 | `GET /api/materiais` | materiais aceitos no filtro |
 | `GET /api/goias` | contorno oficial de Goiás, em GeoJSON |
 
-Parâmetros de `/api/pontos`: `local` (CEP, município, bairro ou endereço) ou `lat` e `lon`, mais `raio_km` (de 1 a 50, padrão 10) e `material`.
+Parâmetros de `/api/pontos`, iguais no CSV e no PDF: `local` (CEP, município, bairro ou endereço) ou `lat` e `lon`, mais `raio_km` (de 1 a 50, padrão 10) e `material`.
 
 ```
 GET /api/pontos?lat=-16.59&lon=-49.33&raio_km=2&material=eletronicos
@@ -84,7 +88,11 @@ GET /api/pontos?lat=-16.59&lon=-49.33&raio_km=2&material=eletronicos
 }
 ```
 
-Se não houver nenhum ponto no raio, a resposta traz os 3 mais próximos em até 250 km, com `fora_do_raio` igual a `true`.
+Se não houver nenhum ponto no raio, a resposta traz os 3 mais próximos em até 250 km, com `fora_do_raio` igual a `true`. Para achá-los, a busca aumenta a área aos poucos (50, 100 e 250 km) e junta o que encontrou em cada uma.
+
+O relatório em PDF traz a data, o local entendido, o material, o raio, a tabela dos pontos e as fontes dos dados, com a atribuição exigida pela licença do OpenStreetMap:
+
+![Relatório em PDF](docs/imagens/06-relatorio-pdf.jpg)
 
 Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
 
@@ -108,14 +116,14 @@ Antes de uma apresentação, vale fazer uma vez as buscas que serão mostradas: 
 - **OpenStreetMap, pelo Nominatim:** a cada busca, o serviço pergunta ao Nominatim pelos lugares marcados como ponto de reciclagem (`amenity=recycling`) dentro da área da busca e pelos ecopontos do estado, encontrados pelo nome. O parâmetro `extratags` traz junto os materiais aceitos, o horário e o telefone, quando o mapa tem essas informações.
 - **Só Goiás:** o Nominatim informa o estado de cada lugar, e só ficam os de Goiás. O contorno desenhado no mapa vem da API de malhas do IBGE.
 - **O que fica de fora:** aterros, lixões e estações de transbordo que não são ecopontos, porque não recebem entrega de quem procura um ponto, e áreas marcadas como privadas. As centrais de embalagens de agrotóxicos são reconhecidas pelo nome.
-- **Limitações:** o mapa é aberto e feito por voluntários, então pode faltar ponto e a maioria não informa os materiais aceitos. Nesses casos, a tela mostra "Materiais aceitos não informados". O Nominatim é um buscador e devolve no máximo 50 lugares por consulta; em Goiás, com poucos pontos mapeados, isso não fez diferença nos testes.
+- **Limitações:** o mapa é aberto e feito por voluntários, então pode faltar ponto e a maioria não informa os materiais aceitos. Nesses casos, a tela mostra "Materiais aceitos não informados". O Nominatim é um buscador e devolve no máximo 50 lugares por consulta. Nas distâncias da busca normal (até 50 km), isso não fez diferença nos testes. Numa área grande, porém, os muitos pontos do DF ocupam esse limite e pontos de Goiás podem ficar de fora; por isso a busca dos mais próximos começa pelas áreas menores.
 - **Outras fontes:** não foi encontrada API pública com os pontos de coleta de Goiás. O portal de dados abertos do estado não tem esses dados, nem a Prefeitura de Goiânia, e as entidades de logística reversa só têm buscadores nos próprios sites. Um ponto que esteja faltando pode ser cadastrado no OpenStreetMap e passa a aparecer na busca: o Nominatim se atualiza em minutos, e o cache do sistema guarda os pontos por até 1 dia.
 
 As cores dos materiais na tela seguem a Resolução CONAMA 275/2001. Os itens que ela não cobre aparecem em cinza.
 
 ## Relação com a gestão ambiental
 
-Dar o destino correto aos resíduos é um dos controles mais comuns na gestão ambiental de uma organização, tema da família ISO 14000. O ResíduoGO ajuda empresas e moradores a encontrar onde entregar cada tipo de resíduo, e a exportação em CSV deixa a lista de opções registrada para quem cuida disso na organização.
+Dar o destino correto aos resíduos é um dos controles mais comuns na gestão ambiental de uma organização, tema da família ISO 14000. O ResíduoGO ajuda empresas e moradores a encontrar onde entregar cada tipo de resíduo. O relatório em PDF e a lista em CSV deixam as opções registradas para quem cuida disso na organização: o PDF lembra que pode apoiar o levantamento de alternativas de destinação no Plano de Gerenciamento de Resíduos Sólidos (PGRS), previsto na Lei 12.305/2010, e o controle operacional da ISO 14001 (item 8.1), sem substituir o comprovante de destinação.
 
 ## Testes
 
@@ -133,7 +141,8 @@ app/
   config.py            endereços, prazos e tempos limite
   erros.py             respostas de erro (RFC 7807)
   rotas/
-    api.py             as 5 rotas do web service (JSON e CSV)
+    api.py             as 6 rotas do web service (JSON, CSV e PDF)
+    exportacao.py      monta a planilha CSV e o relatório em PDF
     schemas.py         formato das respostas, usado também em /docs
   servicos/
     localizacao.py     entende o local digitado ou clicado
@@ -148,7 +157,7 @@ app/
 web/                   página (HTML, CSS e JavaScript)
 scripts/               extração dos trechos de código para o relatório
 tests/
-docs/                  diagramas, telas e trechos para o relatório
+docs/                  funcionamento, diagramas, telas e trechos para o relatório
 ```
 
 O código fica em três camadas, e cada uma só chama a de baixo: as rotas chamam os serviços, os serviços chamam as APIs, e toda consulta a uma API passa pelo cache. A única exceção é o contorno de Goiás, que não tem regra nenhuma e vai da API do IBGE direto para a rota.

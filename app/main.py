@@ -9,7 +9,7 @@ Para executar, a partir da raiz do projeto:
 
 O codigo fica em tres camadas, e cada uma so chama a de baixo:
 
-* rotas/     recebe as requisicoes e responde em JSON ou CSV
+* rotas/     recebe as requisicoes e responde em JSON, CSV ou PDF
 * servicos/  as regras: de onde a pessoa busca e quais pontos mostrar
 * apis/      um arquivo por API externa (IBGE, ViaCEP e Nominatim), todas com cache
 """

@@ -4,7 +4,7 @@ import pytest
 
 from app import config
 from app.servicos.geo import caixa_em_volta, distancia_km, no_retangulo
-from app.servicos.pontos import RAIO_DOS_MAIS_PROXIMOS_KM, buscar, ponto_do_lugar
+from app.servicos.pontos import RAIOS_DOS_MAIS_PROXIMOS_KM, buscar, ponto_do_lugar
 from tests.conftest import lugar
 
 
@@ -140,12 +140,27 @@ def test_mesmo_lugar_nas_duas_buscas_aparece_uma_vez(nominatim):
 
 
 def test_sem_ponto_no_raio_mostra_os_mais_proximos_numa_area_maior(nominatim):
+    # Pontos a 16, 25, 35, 46 e 57 km: os tres primeiros ja aparecem na area de 50 km.
     nominatim.pontos = [lugar(-13.60 - i / 10, -47.10, i, nome=f"Ponto {i}") for i in range(5)]
     resultado = buscar(-13.50, -47.00, 5, None)
     assert resultado["fora_do_raio"] is True
     assert nomes(resultado) == ["Ponto 0", "Ponto 1", "Ponto 2"]
     caixas = [busca["viewbox"] for busca in nominatim.buscas if busca["q"] == "[amenity=recycling]"]
-    assert caixas == [caixa_em_volta(-13.50, -47.00, 5), caixa_em_volta(-13.50, -47.00, RAIO_DOS_MAIS_PROXIMOS_KM)]
+    assert caixas == [caixa_em_volta(-13.50, -47.00, 5), caixa_em_volta(-13.50, -47.00, 50)]
+
+
+def test_mais_proximos_juntam_o_que_cada_area_encontrou(nominatim):
+    """Caso real perto do DF: na area grande, os pontos do DF tomam o limite do Nominatim."""
+    perto = lugar(-13.60, -47.10, 1, nome="Perto")  # a 16 km
+    canto = lugar(-14.15, -47.65, 2, nome="No canto")  # a 101 km: dentro do quadrado de 100 km, fora do circulo
+    longe = [lugar(-15.00 - i / 10, -47.00, 10 + i, nome=f"Longe {i}") for i in range(3)]  # a mais de 160 km
+    nominatim.pontos_por_caixa = {
+        caixa_em_volta(-13.50, -47.00, 50): [perto],
+        caixa_em_volta(-13.50, -47.00, 100): [perto, canto],
+        caixa_em_volta(-13.50, -47.00, 250): longe,  # os dois de cima ficaram de fora
+    }
+    assert nomes(buscar(-13.50, -47.00, 5, None)) == ["Perto", "No canto", "Longe 0"]
+    assert RAIOS_DOS_MAIS_PROXIMOS_KM == (50, 100, 250)
 
 
 def test_os_mais_proximos_respeitam_o_material(nominatim):

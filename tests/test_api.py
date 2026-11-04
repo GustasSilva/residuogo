@@ -1,10 +1,19 @@
 """As rotas do web service, de ponta a ponta, com as APIs externas simuladas."""
 
+import io
+
 import httpx
 import pytest
+from pypdf import PdfReader
 
 from app import config
 from tests.conftest import BUENO, MUNICIPIOS, lugar
+
+
+def texto_do_pdf(conteudo: bytes) -> str:
+    """Texto de todas as paginas, com os espacos e quebras de linha normalizados."""
+    paginas = PdfReader(io.BytesIO(conteudo)).pages
+    return " ".join(" ".join(pagina.extract_text() for pagina in paginas).split())
 
 
 def test_pagina_inicial_e_servida(cliente):
@@ -21,9 +30,14 @@ def test_arquivos_da_pagina_sao_servidos(cliente):
 def test_documentacao_da_api_existe(cliente):
     assert cliente.get("/docs").status_code == 200
     documentacao = cliente.get("/openapi.json").json()["paths"]
-    assert {"/api/pontos", "/api/pontos.csv", "/api/municipios", "/api/materiais", "/api/goias"} <= set(documentacao)
-    parametros = {item["name"] for item in documentacao["/api/pontos.csv"]["get"]["parameters"]}
-    assert parametros == {"local", "lat", "lon", "raio_km", "material"}
+    rotas = {"/api/pontos", "/api/pontos.csv", "/api/pontos.pdf", "/api/municipios", "/api/materiais", "/api/goias"}
+    assert rotas <= set(documentacao)
+    for rota in ("/api/pontos.csv", "/api/pontos.pdf"):
+        parametros = {item["name"] for item in documentacao[rota]["get"]["parameters"]}
+        assert parametros == {"local", "lat", "lon", "raio_km", "material"}
+    # O contrato diz o tipo de arquivo que cada rota devolve.
+    assert "text/csv" in documentacao["/api/pontos.csv"]["get"]["responses"]["200"]["content"]
+    assert "application/pdf" in documentacao["/api/pontos.pdf"]["get"]["responses"]["200"]["content"]
 
 
 # --- Busca por CEP, municipio, lugar e mapa ---
@@ -264,8 +278,51 @@ def test_csv_abre_no_excel_com_acentos(cliente, apis_ok):
     assert "'=CMD();Centro de reciclagem;;Papel e papelão;0,0;-16,7;-49,27" in texto
 
 
-def test_csv_com_erro_responde_no_formato_da_api(cliente):
-    resposta = cliente.get("/api/pontos.csv", params={"local": "123"})
+def test_relatorio_pdf_da_busca(cliente, apis_ok):
+    apis_ok.pontos = [lugar(-16.71, -49.27, 1, nome="Cooperativa Recicla Goiás", **{"recycling:paper": "yes"})]
+    resposta = cliente.get("/api/pontos.pdf", params={"local": "74230010", "material": "papel"})
+    assert resposta.status_code == 200
+    assert resposta.headers["content-type"] == "application/pdf"
+    assert "pontos-de-coleta.pdf" in resposta.headers["content-disposition"]
+    assert resposta.content.startswith(b"%PDF")
+
+    texto = texto_do_pdf(resposta.content)
+    for trecho in [
+        "Local: Avenida T 15, Setor Bueno, Goiânia - GO (localizado pela rua)",
+        "Material: Papel e papelão",
+        "Distância máxima: 10 km",
+        "Cooperativa Recicla Goiás",
+        "1,1 km",
+        "Lei 12.305/2010",
+        "© colaboradores do OpenStreetMap",
+    ]:
+        assert trecho in texto
+
+
+def test_relatorio_pdf_avisa_quando_mostra_os_mais_proximos(cliente, apis_ok):
+    apis_ok.pontos = [lugar(-16.90, -49.27, 1, nome="Ponto distante")]
+    texto = texto_do_pdf(cliente.get("/api/pontos.pdf", params={"local": "74230010", "raio_km": 5}).content)
+    assert "Não há pontos até 5 km" in texto
+    assert "Ponto distante" in texto
+
+
+def test_relatorio_pdf_sem_pontos(cliente, apis_ok):
+    texto = texto_do_pdf(cliente.get("/api/pontos.pdf", params={"lat": -16.80, "lon": -49.37}).content)
+    assert "Local: ponto escolhido no mapa (-16.80000, -49.37000)" in texto
+    assert "Nenhum ponto encontrado" in texto
+
+
+def test_relatorio_pdf_aguenta_caractere_que_a_fonte_nao_tem(cliente, apis_ok):
+    """Um nome do mapa com emoji nao pode derrubar o relatorio."""
+    apis_ok.pontos = [lugar(-16.71, -49.27, 1, nome="Ponto ♻ – Verde")]
+    resposta = cliente.get("/api/pontos.pdf", params={"local": "74230010"})
+    assert resposta.status_code == 200
+    assert "Ponto ? – Verde" in texto_do_pdf(resposta.content)
+
+
+@pytest.mark.parametrize("rota", ["/api/pontos.csv", "/api/pontos.pdf"])
+def test_arquivo_com_erro_responde_no_formato_da_api(cliente, rota):
+    resposta = cliente.get(rota, params={"local": "123"})
     assert resposta.status_code == 422
     assert resposta.headers["content-type"] == "application/problem+json"
 

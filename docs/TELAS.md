@@ -8,7 +8,7 @@ O mapa já abre com o contorno de Goiás, que vem da API de malhas do IBGE. A pe
 
 ## Resultado da busca
 
-Pontos do mais perto para o mais longe, com o mesmo número na lista e no mapa. O título mostra o lugar que foi entendido. O círculo mostra a distância escolhida.
+Pontos do mais perto para o mais longe, com o mesmo número na lista e no mapa. O título mostra o lugar que foi entendido. O círculo mostra a distância escolhida. Ao lado do título ficam os links para baixar a mesma busca em CSV e em PDF.
 
 ![Resultado da busca por bairro](imagens/02-resultado.jpg)
 
@@ -29,3 +29,9 @@ Clicar no mapa procura a partir daquele lugar. Sem nenhum ponto na distância es
 A mensagem de erro vem da API e diz o que fazer. A lista anterior continua na tela. No exemplo, um bairro de Brasília, que fica fora de Goiás.
 
 ![Local não encontrado em Goiás](imagens/05-erro.jpg)
+
+## Relatório em PDF
+
+O link "Relatório em PDF" chama `/api/pontos.pdf` com os mesmos parâmetros da busca na tela. O relatório traz a data, o local entendido e como ele foi localizado, o material, o raio, a tabela dos pontos, um lembrete sobre o uso no PGRS e na ISO 14001 e as fontes dos dados.
+
+![Relatório da busca em PDF](imagens/06-relatorio-pdf.jpg)
