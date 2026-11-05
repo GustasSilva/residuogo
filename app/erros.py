@@ -1,4 +1,4 @@
-"""Erros previstos e respostas de erro no formato da RFC 7807."""
+"""Erros previstos e respostas de erro no formato da RFC 9457."""
 
 import logging
 

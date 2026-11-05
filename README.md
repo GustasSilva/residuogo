@@ -96,7 +96,7 @@ O relatório em PDF traz a data, o local entendido, o material, o raio, a tabela
 
 ![Relatório em PDF](docs/imagens/06-relatorio-pdf.jpg)
 
-Os erros seguem a RFC 7807 e têm a mensagem em `detail`:
+Os erros seguem a RFC 9457 e têm a mensagem em `detail`:
 
 | Situação | Resposta |
 |---|---|

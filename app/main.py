@@ -30,7 +30,7 @@ app = FastAPI(
     version="2.0.0",
     description=(
         "Consulta de pontos de coleta de resíduos no estado de Goiás. Reúne dados do IBGE, "
-        "do ViaCEP e do OpenStreetMap (pelo Nominatim). Os erros seguem a RFC 7807."
+        "do ViaCEP e do OpenStreetMap (pelo Nominatim). Os erros seguem a RFC 9457."
     ),
 )
 registrar_handlers(app)

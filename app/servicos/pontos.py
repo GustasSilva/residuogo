@@ -36,7 +36,7 @@ def ponto_do_lugar(lugar: dict) -> dict | None:
         return None
     if etiquetas.get("access") in ("private", "no") or NOMES_EXCLUIDOS.search(nome):
         return None
-    # Estação de transbordo costuma ser área de aterro ou de empresa, não ponto de entrega.
+    # Só entram pontos de reciclagem e ecopontos, não estações de transbordo.
     if lugar.get("type") != "recycling" and "ecoponto" not in nome.casefold():
         return None
 
